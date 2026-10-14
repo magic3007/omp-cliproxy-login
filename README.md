@@ -7,6 +7,7 @@
 ### Log in to any model gateway with a base URL and an API key — every chat model it serves becomes selectable.
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
+<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
@@ -25,7 +26,7 @@ One installation fronts **as many gateways as you configure**. You name each one
 Needs [omp](https://omp.sh) ≥ 18.2.3 (`@oh-my-pi/pi-coding-agent`), the agent that loads this extension.
 
 ```bash
-omp plugin install git:https://github.com/magic3007/omp-gateway
+omp plugin install github:magic3007/omp-gateway
 ```
 
 Install from the git URL, not by bare name: the npm package `omp-gateway` belongs to an unrelated project.
@@ -36,7 +37,7 @@ Install from the git URL, not by bare name: the npm package `omp-gateway` belong
 omp login                            # pick "Custom gateway (name + base URL + API key)"
                                      #   ① name        e.g. litellm
                                      #   ② base URL    e.g. https://gw.example.com
-                                     #   ③ key         KAFARA_API_KEY, or sk-…, or !pass show gw
+                                     #   ③ key         LITELLM_API_KEY, or sk-…, or !pass show gw
                                      #   ④ extra ids   Enter for none
 # → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>. Key stored as the reference LITELLM_API_KEY.
 ```
@@ -45,7 +46,7 @@ The name, URL and key are validated together with one model-list call before any
 
 ## Enable the models
 
-omp's `enabledModels` is a strict allow-list, so add one glob per gateway name to `~/.omp/agent/config.yml`:
+If your `~/.omp/agent/config.yml` already has an `enabledModels` allow-list, add one glob per gateway name — without that list, every discovered model is already selectable:
 
 ```yaml
 enabledModels:
@@ -54,7 +55,7 @@ enabledModels:
 
 modelRoles:                             # optional aliases
   gw-opus: litellm/claude-opus-4-1:auto
-  ark-code: volcengine/ark-code-latest:auto
+  ark-code: volcengine/ark-code-latest:auto   # :auto is omp's thinking-level suffix
 ```
 
 Then use them like any other model:
@@ -105,15 +106,15 @@ Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`):
 
 | You write | omp sends | Use it for |
 | --- | --- | --- |
-| `KAFARA_API_KEY` | that environment variable | the usual case — the secret stays in your shell environment |
-| `!gpg -q -d ~/.omp/keys/kafara.gpg` | the command's stdout, trimmed | secrets in an encrypted file, `pass show …`, `op read …`, a keychain lookup |
+| `LITELLM_API_KEY` | that environment variable | the usual case — the secret stays in your shell environment |
+| `!gpg -q -d ~/.omp/keys/gateway.gpg` | the command's stdout, trimmed | secrets in an encrypted file, `pass show …`, `op read …`, a keychain lookup |
 | `sk-…` | the text itself | quick trials; the file then holds the secret |
 
 So the file is safe to track in a dotfiles repository: it names where the key comes from, and never has to contain it. The login entry writes a reference too — paste a key that some environment variable already holds and it stores that variable's name instead, saying so in its output. See [SECURITY.md](SECURITY.md) for the full posture.
 
-Two things to know about the environment form: the variable must be exported in the shell that starts omp, and a name nothing sets is sent as the literal key (omp's rule), which surfaces as a 401. Command output is cached, so an interactive `gpg` or `op` prompt happens once per session.
+Two things to know about the environment form: the variable must be exported in every shell that starts omp, and a name nothing sets is sent as the literal key (omp's rule), which the login flow reports as such. A `!command` runs as your user through `/bin/sh -c`; omp caches its output per process, so an interactive `gpg` or `op` prompt happens once per omp run — the login itself runs it once more.
 
-Hand-editing works: `extraModels` and `api` are the fields the login flow does not ask about, and the file is re-validated on load.
+Hand-editing works: `extraModels` and `api` are the fields the login flow does not ask about. Every row is validated on its own, so a mistake costs that gateway only — but the login entry refuses to run while any row is unusable, rather than writing the file back without it.
 
 Base URLs are stored as the gateway root (`https://gw.example.com`, a trailing `/v1` is stripped); the plugin adds `/v1/models` for discovery, and the `/v1` the OpenAI wire needs. After hand-editing, run `omp models refresh` so the cached catalog is re-read.
 

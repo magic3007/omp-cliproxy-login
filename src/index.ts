@@ -18,7 +18,7 @@
  *   every other config value (`resolveConfigValue`): `!command` runs and yields
  *   its stdout, an exact environment variable name yields that variable, and
  *   anything else is the literal key. So the config file can be tracked in a
- *   dotfiles repository: it names `KAFARA_API_KEY`, or `!gpg -q -d keys.gpg`,
+ *   dotfiles repository: it names `LITELLM_API_KEY`, or `!gpg -q -d keys.gpg`,
  *   and the secret stays in the environment or in an encrypted store.
  *   See `SECURITY.md`.
  */
@@ -53,7 +53,7 @@ const CLEAR_EXTRAS = "-";
 /** Prefix of a command key reference: `!cmd` runs `cmd` and takes its stdout. */
 const COMMAND_PREFIX = "!";
 
-/** An exact environment variable name (`$envExact`), e.g. `KAFARA_API_KEY`. */
+/** An exact environment variable name (`$envExact`), e.g. `LITELLM_API_KEY`. */
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** Fallback context window for models the gateway does not report one for. */
@@ -97,6 +97,80 @@ export interface GatewayEntry {
 	extraModels: string[];
 }
 
+/** Outcome of validating one `providers[]` row: an entry, or why it is unusable. */
+type RowResult = { entry: GatewayEntry } | { problem: string };
+
+function parseRow(raw: unknown, index: number): RowResult {
+	const at = `providers[${index}]`;
+	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return { problem: `${at} is not an object` };
+	const row = raw as Record<string, unknown>;
+	if (typeof row.name !== "string") return { problem: `${at} has no "name" string` };
+	const name = row.name.trim().toLowerCase();
+	if (!GATEWAY_NAME_PATTERN.test(name)) return { problem: `${at}: "${row.name}" is not a usable gateway name` };
+	if (typeof row.baseUrl !== "string" || gatewayRoot(row.baseUrl).length === 0) {
+		return { problem: `${at} ("${name}") has no "baseUrl" string` };
+	}
+	if (row.api !== undefined && (typeof row.api !== "string" || API_KINDS[row.api] !== true)) {
+		return { problem: `${at} ("${name}"): "api" must be ${Object.keys(API_KINDS).join(" or ")}` };
+	}
+	if (row.apiKey !== undefined && typeof row.apiKey !== "string") {
+		return { problem: `${at} ("${name}"): "apiKey" is not a string` };
+	}
+	if (
+		row.extraModels !== undefined &&
+		(!Array.isArray(row.extraModels) || row.extraModels.some(id => typeof id !== "string"))
+	) {
+		return { problem: `${at} ("${name}"): "extraModels" is not an array of strings` };
+	}
+	const apiKey = typeof row.apiKey === "string" ? row.apiKey.trim() : "";
+	return {
+		entry: {
+			name,
+			baseUrl: gatewayRoot(row.baseUrl),
+			api: typeof row.api === "string" ? row.api : DEFAULT_API,
+			...(apiKey.length > 0 ? { apiKey } : {}),
+			extraModels: parseModelIds(((row.extraModels as string[] | undefined) ?? []).join(",")),
+		},
+	};
+}
+
+/**
+ * Parse the config file row by row, so that one hand-edit mistake costs that
+ * gateway only. A file-level schema would be worse than useless here: the login
+ * flow writes back what it reads, so a single malformed row would otherwise
+ * erase every other gateway.
+ *
+ * @returns the usable entries, and one problem string per row that was skipped
+ * (including later rows that repeat a name).
+ * @throws when the text is not JSON, or `providers` is present but not an array.
+ */
+export function parseEntries(text: string): { entries: GatewayEntry[]; problems: string[] } {
+	const raw: unknown = JSON.parse(text);
+	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+		throw new Error('config file must hold a JSON object with a "providers" array');
+	}
+	const providers = (raw as Record<string, unknown>).providers;
+	if (providers === undefined) return { entries: [], problems: [] };
+	if (!Array.isArray(providers)) throw new Error('"providers" must be an array');
+	const entries: GatewayEntry[] = [];
+	const problems: string[] = [];
+	const seen = new Set<string>();
+	for (const [index, row] of providers.entries()) {
+		const result = parseRow(row, index);
+		if ("problem" in result) {
+			problems.push(result.problem);
+			continue;
+		}
+		if (seen.has(result.entry.name)) {
+			problems.push(`providers[${index}]: "${result.entry.name}" is already configured above`);
+			continue;
+		}
+		seen.add(result.entry.name);
+		entries.push(result.entry);
+	}
+	return { entries, problems };
+}
+
 /** One chat model of a gateway catalog. */
 export interface GatewayModel {
 	id: string;
@@ -109,6 +183,9 @@ export interface GatewayModel {
 	/** False when the gateway reports text-only input. */
 	acceptsImages: boolean;
 }
+
+/** The gateway rejected the key (HTTP 401/403): a distinct type, so the login flow can explain why. */
+class AuthFailure extends Error {}
 
 /**
  * Gateway root without a trailing slash or `/v1`: the two wires disagree on
@@ -227,7 +304,9 @@ export function referenceToStore(typed: string, key: string, env: Env = process.
  * written silently.
  */
 function keyStorageNote(stored: string, typed: string, env: Env = process.env): string {
-	if (stored !== typed) return ` Key stored as the reference ${stored} — that environment variable already holds it.`;
+	if (stored !== typed) {
+		return ` Key stored as the reference ${stored} — that environment variable already holds it; export it wherever you start omp.`;
+	}
 	if (stored.startsWith(COMMAND_PREFIX)) return ` Key stored as the command reference ${stored}.`;
 	if (env[stored] !== undefined) return ` Key stored as the reference ${stored}.`;
 	if (ENV_NAME_PATTERN.test(stored)) return ` Nothing sets ${stored}, so omp sends that name itself as the key.`;
@@ -241,21 +320,6 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 	let registry: ExtensionContext["modelRegistry"] | undefined;
 	pi.on("session_start", (_event, ctx) => {
 		registry = ctx.modelRegistry;
-	});
-
-	/** Shape of the plugin's config file. */
-	const GatewayFileSchema = z.object({
-		providers: z
-			.array(
-				z.object({
-					name: z.string(),
-					baseUrl: z.string(),
-					api: z.string().optional(),
-					apiKey: z.string().optional(),
-					extraModels: z.array(z.string()).optional(),
-				}),
-			)
-			.optional(),
 	});
 
 	/**
@@ -281,41 +345,33 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 			.optional(),
 	});
 
-	/** Configured gateways; unreadable or malformed rows are skipped rather than failing the load. */
-	const readEntries = (): GatewayEntry[] => {
+	/**
+	 * Configured gateways, or `undefined` when the file exists but cannot be
+	 * parsed at all. Row-level problems are logged and skipped; the caller
+	 * decides whether skipping is safe (loading: yes — writing back: no).
+	 */
+	const readEntries = (): { entries: GatewayEntry[]; problems: string[] } | undefined => {
 		let text: string;
 		try {
 			text = readFileSync(configFile, "utf-8");
 		} catch {
 			// Missing config: the login entry is the only thing left to offer.
-			return [];
+			return { entries: [], problems: [] };
 		}
-		let raw: unknown;
+		let parsed: { entries: GatewayEntry[]; problems: string[] };
 		try {
-			raw = JSON.parse(text);
+			parsed = parseEntries(text);
 		} catch (error) {
-			pi.logger.warn("gateway login: config file is not valid JSON", {
+			pi.logger.warn("gateway login: config file cannot be parsed", {
 				file: configFile,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return [];
+			return undefined;
 		}
-		const parsed = GatewayFileSchema.safeParse(raw);
-		if (!parsed.success) {
-			pi.logger.warn("gateway login: config file has an unexpected shape", { file: configFile });
-			return [];
+		for (const problem of parsed.problems) {
+			pi.logger.warn("gateway login: skipped a config row", { file: configFile, problem });
 		}
-		const entries: GatewayEntry[] = [];
-		for (const row of parsed.data.providers ?? []) {
-			const name = row.name.trim().toLowerCase();
-			const baseUrl = gatewayRoot(row.baseUrl);
-			if (!GATEWAY_NAME_PATTERN.test(name) || baseUrl.length === 0) continue;
-			const api = row.api !== undefined && API_KINDS[row.api] === true ? row.api : DEFAULT_API;
-			const apiKey = row.apiKey?.trim();
-			const extraModels = parseModelIds((row.extraModels ?? []).join(","));
-			entries.push({ name, baseUrl, api, ...(apiKey ? { apiKey } : {}), extraModels });
-		}
-		return entries;
+		return parsed;
 	};
 
 	const writeEntries = (entries: GatewayEntry[]): void => {
@@ -358,7 +414,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 			const detail = (await response.text().catch(() => "")).trim().slice(0, 300);
 			const suffix = detail ? `: ${detail}` : "";
 			if (response.status === 401 || response.status === 403) {
-				throw new Error(`the gateway rejected this API key (HTTP ${response.status})${suffix}`);
+				throw new AuthFailure(`the gateway rejected this API key (HTTP ${response.status})${suffix}`);
 			}
 			throw new Error(`listing models failed (HTTP ${response.status})${suffix}`);
 		}
@@ -463,13 +519,25 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 		});
 	};
 
-	for (const entry of readEntries()) registerGateway(entry);
+	for (const entry of readEntries()?.entries ?? []) registerGateway(entry);
 
 	pi.registerProvider(WIZARD_ID, {
 		oauth: {
 			name: WIZARD_LABEL,
 			async login(callbacks) {
-				const saved = readEntries();
+				const stored = readEntries();
+				// The login flow writes back what it reads, so it must refuse to
+				// run on a file it cannot fully account for: a skipped row would
+				// silently disappear from disk.
+				if (stored === undefined) {
+					throw new Error(`${configFile} cannot be parsed; fix or move it, then log in again`);
+				}
+				if (stored.problems.length > 0) {
+					throw new Error(
+						`${configFile} has unusable rows, which logging in would erase; fix them first:\n  ${stored.problems.join("\n  ")}`,
+					);
+				}
+				const saved = stored.entries;
 				const name = normalizeGatewayName(
 					await callbacks.onPrompt({
 						message: "Name this gateway (it becomes the model prefix, e.g. litellm/claude-opus-4-1)",
@@ -509,9 +577,9 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 					await callbacks.onPrompt({
 						message:
 							storedReference === undefined
-								? `Paste the API key "${name}" serves, or a reference to one (an environment variable name, or !command)`
+								? `Paste the API key "${name}" serves, or a reference: an environment variable name exported wherever you start omp, or !command`
 								: `Paste a new key or key reference for "${name}"${keeps}`,
-						placeholder: "KAFARA_API_KEY",
+						placeholder: "LITELLM_API_KEY",
 						secret: true,
 						allowEmpty: storedReference !== undefined,
 					})
@@ -540,7 +608,21 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 							? parseModelIds(extrasAnswer)
 							: (existing?.extraModels ?? []);
 
-				const models = catalogFor(await listModels(apiKey, baseUrl), extraModels);
+				let models: GatewayModel[];
+				try {
+					models = catalogFor(await listModels(apiKey, baseUrl), extraModels);
+				} catch (error) {
+					// A variable name nothing sets is a literal key, for omp as for
+					// this plugin — so the gateway sees the name itself and answers
+					// 401. Say that instead of blaming the key.
+					const classified = classifyKeyReference(reference);
+					if (classified.kind === "literal" && ENV_NAME_PATTERN.test(reference) && error instanceof AuthFailure) {
+						throw new Error(
+							`nothing sets ${reference} in this shell, so "${reference}" was sent as the key itself and "${baseUrl}" rejected it; export it before starting omp, paste the key, or use "${COMMAND_PREFIX}command"`,
+						);
+					}
+					throw error;
+				}
 				if (models.length === 0) {
 					throw new Error(`"${baseUrl}" returned no chat models for this API key, and no extra ids were given`);
 				}

@@ -5,6 +5,7 @@ import {
 	modelsEndpoint,
 	normalizeBaseUrl,
 	normalizeGatewayName,
+	parseEntries,
 	parseModelIds,
 	providerBaseUrl,
 	referenceToStore,
@@ -84,14 +85,14 @@ describe("classifyKeyReference", () => {
 	// The three cases omp's own resolveConfigValue distinguishes, so a value
 	// written here behaves the same way it would in models.yml.
 	test("reads an exact environment variable name", () => {
-		expect(classifyKeyReference("KAFARA_API_KEY", { KAFARA_API_KEY: "sk-1" })).toEqual({
+		expect(classifyKeyReference("LITELLM_API_KEY", { LITELLM_API_KEY: "sk-1" })).toEqual({
 			kind: "env",
-			name: "KAFARA_API_KEY",
+			name: "LITELLM_API_KEY",
 		});
 	});
 
 	test("falls back to a literal for a name nothing sets", () => {
-		expect(classifyKeyReference("KAFARA_API_KEY", {})).toEqual({ kind: "literal", key: "KAFARA_API_KEY" });
+		expect(classifyKeyReference("LITELLM_API_KEY", {})).toEqual({ kind: "literal", key: "LITELLM_API_KEY" });
 	});
 
 	test("runs a !command reference", () => {
@@ -102,21 +103,108 @@ describe("classifyKeyReference", () => {
 	});
 
 	test("keeps a pasted key as a literal", () => {
-		expect(classifyKeyReference("sk-abc", { KAFARA_API_KEY: "sk-abc" })).toEqual({ kind: "literal", key: "sk-abc" });
+		expect(classifyKeyReference("sk-abc", { LITELLM_API_KEY: "sk-abc" })).toEqual({ kind: "literal", key: "sk-abc" });
 	});
 });
 
 describe("referenceToStore", () => {
 	test("stores a pasted key as the environment variable already holding it", () => {
-		expect(referenceToStore("sk-abc", "sk-abc", { KAFARA_API_KEY: "sk-abc" })).toBe("KAFARA_API_KEY");
+		expect(referenceToStore("sk-abc", "sk-abc", { LITELLM_API_KEY: "sk-abc" })).toBe("LITELLM_API_KEY");
 	});
 
 	test("stores a reference as typed", () => {
-		expect(referenceToStore("KAFARA_API_KEY", "sk-abc", { KAFARA_API_KEY: "sk-abc" })).toBe("KAFARA_API_KEY");
+		expect(referenceToStore("LITELLM_API_KEY", "sk-abc", { LITELLM_API_KEY: "sk-abc" })).toBe("LITELLM_API_KEY");
 		expect(referenceToStore("!pass show gw", "sk-abc", {})).toBe("!pass show gw");
 	});
 
 	test("stores a pasted key nothing holds as typed", () => {
 		expect(referenceToStore("sk-abc", "sk-abc", { OTHER_API_KEY: "sk-xyz" })).toBe("sk-abc");
+	});
+});
+
+describe("parseEntries", () => {
+	const row = (name: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+		name,
+		baseUrl: `https://${name}.example.com`,
+		...extra,
+	});
+
+	test("keeps the good rows when one row is unusable", () => {
+		// The login flow writes back what it reads: a file-level schema would
+		// turn one hand-edit mistake into the loss of every other gateway.
+		const parsed = parseEntries(
+			JSON.stringify({
+				providers: [row("alpha"), row("beta", { extraModels: "a,b" }), row("gamma")],
+			}),
+		);
+		expect(parsed.entries.map(entry => entry.name)).toEqual(["alpha", "gamma"]);
+		expect(parsed.problems).toEqual(['providers[1] ("beta"): "extraModels" is not an array of strings']);
+	});
+
+	test("reports every unusable shape instead of guessing", () => {
+		const parsed = parseEntries(
+			JSON.stringify({
+				providers: [
+					"not-an-object",
+					{ baseUrl: "https://a.example.com" },
+					row("Bad Name"),
+					{ name: "noc", baseUrl: "   " },
+					row("delta", { api: "openai_completions" }),
+					row("echo", { apiKey: 42 }),
+				],
+			}),
+		);
+		expect(parsed.entries).toEqual([]);
+		expect(parsed.problems).toEqual([
+			"providers[0] is not an object",
+			'providers[1] has no "name" string',
+			'providers[2]: "Bad Name" is not a usable gateway name',
+			'providers[3] ("noc") has no "baseUrl" string',
+			'providers[4] ("delta"): "api" must be anthropic-messages or openai-completions',
+			'providers[5] ("echo"): "apiKey" is not a string',
+		]);
+	});
+
+	test("skips a repeated name, keeping the first", () => {
+		const parsed = parseEntries(
+			JSON.stringify({ providers: [row("alpha", { apiKey: "FIRST_KEY" }), row("ALPHA", { apiKey: "SECOND_KEY" })] }),
+		);
+		expect(parsed.entries).toHaveLength(1);
+		expect(parsed.entries[0]?.apiKey).toBe("FIRST_KEY");
+		expect(parsed.problems).toEqual(['providers[1]: "alpha" is already configured above']);
+	});
+
+	test("normalizes the rows it keeps", () => {
+		const parsed = parseEntries(
+			JSON.stringify({
+				providers: [
+					{
+						name: "  Alpha ",
+						baseUrl: "https://alpha.example.com/v1/",
+						api: "openai-completions",
+						apiKey: "  LITELLM_API_KEY  ",
+						extraModels: ["a", " a ", "", "b"],
+					},
+				],
+			}),
+		);
+		expect(parsed.problems).toEqual([]);
+		expect(parsed.entries[0]).toEqual({
+			name: "alpha",
+			baseUrl: "https://alpha.example.com",
+			api: "openai-completions",
+			apiKey: "LITELLM_API_KEY",
+			extraModels: ["a", "b"],
+		});
+	});
+
+	test("treats a missing providers array as an empty file", () => {
+		expect(parseEntries("{}")).toEqual({ entries: [], problems: [] });
+	});
+
+	test("refuses a file it cannot account for, so the caller never overwrites it", () => {
+		expect(() => parseEntries("{ not json")).toThrow();
+		expect(() => parseEntries("[]")).toThrow(/providers/);
+		expect(() => parseEntries(JSON.stringify({ providers: {} }))).toThrow(/must be an array/);
 	});
 });

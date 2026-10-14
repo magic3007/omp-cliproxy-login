@@ -30,11 +30,11 @@ A `message_end` event naming `provider: <name>` proves the request went through 
 
 ## Ground rules
 
-- **No credentials in the repo.** The API key comes from the login prompt at run time, never from an environment variable, a config file committed anywhere, or a test fixture.
+- **No secrets in the repo.** No real key may land in a commit, a test fixture or a doc example. Keys enter only at run time, through the login prompt or the key reference it stores.
 - **No runtime dependencies.** The extension is loaded as TypeScript source by omp's Bun runtime; host types stay behind `import type`, and validation uses the injected `pi.zod`. `devDependencies` (TypeScript, host types) are fine — they never reach a user's install.
 - **Keep the gateway generic.** Nothing may assume a particular vendor beyond "answers `GET <base URL>/v1/models`" — a vendor-specific quirk belongs behind a documented default, like the Ark status/`task_type` filters.
 - **Verify against a live gateway** before sending a pull request: a logged-in catalog listing and one successful call, for at least one gateway you actually have access to.
-- Match the existing style: tabs, double quotes, `ProviderConfig` types from `@oh-my-pi/pi-coding-agent`.
+- Match the existing style: tabs, double quotes, host types (`ExtensionAPI`, `ExtensionContext`, `ProviderModelConfig`) imported with `import type` from `@oh-my-pi/pi-coding-agent`.
 
 ## Releasing
 

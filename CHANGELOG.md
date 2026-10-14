@@ -2,41 +2,34 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-10-14
+## [0.3.0] - 2026-10-15
 
-A gateway's key is now a **reference**, so the config file can be tracked in a dotfiles repository.
+Any gateway, under any name, with the key kept wherever you keep secrets.
 
 ### Added
 
-- `apiKey` is a **key reference**, resolved by omp exactly like every other config value (`resolveConfigValue`): an environment variable name (`KAFARA_API_KEY`), a `!command` whose stdout is the key (`!gpg -q -d ~/.omp/keys/kafara.gpg`), or a literal key. The file can name where the secret comes from instead of holding it.
+- `apiKey` is a **key reference**, resolved by omp exactly like every other config value (`resolveConfigValue`): an environment variable name (`LITELLM_API_KEY`), a `!command` whose stdout is the key (`!gpg -q -d ~/.omp/keys/gateway.gpg`), or a literal key. The file can name where the secret comes from instead of holding it, so it is safe to track in a dotfiles repository.
 - The login entry accepts a reference as well as a key, resolves it before the model-list probe, and reports how the key was stored.
-- `classifyKeyReference` and `referenceToStore` (exported, with tests): the reference forms, and the rule for what to write when a key is pasted.
+- `bun run typecheck` and `bun test` (URL, name, model-id and config-parsing helpers), both run by CI on push and pull request.
+- [SECURITY.md](SECURITY.md): what each reference form protects, and how to report a vulnerability privately.
 
 ### Changed
 
+- **Renamed** the repository, package and plugin to `omp-gateway` (was `omp-gateway-login`). Uninstall the old id once: `omp plugin uninstall omp-gateway-login`, then install `github:magic3007/omp-gateway`.
 - A pasted literal key that an environment variable already holds is stored as that variable's name, and the login output says which one. A literal nothing holds is stored as typed and the login output says so — a secret never reaches the file silently.
-- [SECURITY.md](SECURITY.md) documents the three reference forms and what each one protects, instead of the plaintext-keys-only posture.
-
-## [0.3.0] - 2026-10-14
-
-### Fixed
-
-- `openai-completions` gateways now get the `/v1` that wire requires, and `anthropic-messages` gateways no longer get a doubled `/v1` when the stored URL ends in `/v1`: base URLs are canonicalized to the gateway root and the suffix is added per use.
-- A login name already taken by another provider (a built-in, or a `models.yml` block) is rejected instead of shadowing it.
-- The config file is `chmod`'ed to `0600` on every write, not only when created.
-- Model discovery failures are logged with the gateway name and endpoint before being rethrown; omp otherwise swallows them and the models just go missing.
-- Non-chat ids with no prefix (`tts-1`, `whisper-1`) are filtered out of catalogs.
-
-### Changed
-
-- **Renamed** the repository, package and plugin to `omp-gateway` (was `omp-gateway-login`). Uninstall the old id once: `omp plugin uninstall omp-gateway-login`, then install `git:https://github.com/magic3007/omp-gateway`.
 - Docs and prompt examples use vendor-neutral gateway names; the config file (`~/.omp/agent/gateways-login.json`) and its format are unchanged.
 - Base URLs with a query string or fragment are rejected at login: the derived endpoints would have dropped them silently.
 
-### Added
+### Fixed
 
-- `bun run typecheck` and `bun test` (URL, name and model-id helpers), both run by CI on push and pull request.
-- [SECURITY.md](SECURITY.md): how API keys are stored on disk and how to report a vulnerability privately.
+- **One malformed row no longer costs every gateway.** The file was validated as a whole, so a single bad row made the loader report no gateways at all — and the next login then wrote that empty list back over the file. Rows are now parsed one by one, bad ones are logged and skipped, and the login entry refuses to write while any row is unusable.
+- `openai-completions` gateways now get the `/v1` that wire requires, and `anthropic-messages` gateways no longer get a doubled `/v1` when the stored URL ends in `/v1`: base URLs are canonicalized to the gateway root and the suffix is added per use.
+- A login name already taken by another provider (a built-in, or a `models.yml` block) is rejected instead of shadowing it.
+- A second row repeating a gateway name is skipped instead of registering the provider twice.
+- The config file is `chmod`'ed to `0600` on every write, not only when created.
+- Model discovery failures are logged with the gateway name and endpoint before being rethrown; omp otherwise swallows them and the models just go missing.
+- Typing the name of a variable nothing exports now fails with that diagnosis, instead of the gateway's bare 401 for a key it never had.
+- Non-chat ids with no prefix (`tts-1`, `whisper-1`) are filtered out of catalogs.
 
 ## [0.2.0] - 2026-10-14
 
@@ -53,7 +46,7 @@ Any "base URL + API key" gateway, and more than one at a time.
 
 ### Changed
 
-- **Renamed** the repository, package and plugin to `omp-gateway-login` (was `omp-cliproxy-login`), and the config file to `~/.omp/agent/gateways-login.json` (was `providers-login.json`). CLIProxyAPI is one gateway among many, not the subject.
+- **Renamed** the repository, package and plugin to `omp-gateway-login` (was `omp-cliproxy-login`), and the config file to `~/.omp/agent/gateways-login.json`. CLIProxyAPI is one gateway among many, not the subject.
 - **Breaking:** the provider is no longer fixed to `cliproxy`; the model prefix is the name you type.
 - **Breaking:** configuration moved from `~/.omp/agent/cliproxy-login.json` (URL only) to `~/.omp/agent/gateways-login.json` (all gateways, keys included). Delete the old file; re-add each gateway through the login entry.
 - Login validation failures leave the config file untouched.
@@ -75,7 +68,6 @@ First release.
 
 - Discovery no longer reports an empty catalog while logged out. That empty success was cached as authoritative and hid the models a later login unlocked until the cache TTL expired.
 
-[0.4.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.4.0
 [0.3.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.3.0
 [0.2.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.2.0
 [0.1.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.1.0

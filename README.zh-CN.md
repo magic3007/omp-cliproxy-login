@@ -7,6 +7,7 @@
 ### 输入网关地址和 API Key 即可登录，该网关下的全部聊天模型直接可选。
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
+<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="零依赖" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
@@ -25,7 +26,7 @@
 需要 [omp](https://omp.sh) ≥ 18.2.3（`@oh-my-pi/pi-coding-agent`），即加载本扩展的 agent。
 
 ```bash
-omp plugin install git:https://github.com/magic3007/omp-gateway
+omp plugin install github:magic3007/omp-gateway
 ```
 
 只能用 git 地址安装，不要用裸包名：npm 上的 `omp-gateway` 是另一个无关项目。
@@ -36,7 +37,7 @@ omp plugin install git:https://github.com/magic3007/omp-gateway
 omp login                            # 选 "Custom gateway (name + base URL + API key)"
                                      #   ① 名字     如 litellm
                                      #   ② 网关地址 如 https://gw.example.com
-                                     #   ③ key      KAFARA_API_KEY，或 sk-…，或 !pass show gw
+                                     #   ③ key      LITELLM_API_KEY，或 sk-…，或 !pass show gw
                                      #   ④ 额外模型 id（回车跳过）
 # → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>. Key stored as the reference LITELLM_API_KEY.
 ```
@@ -45,7 +46,7 @@ omp login                            # 选 "Custom gateway (name + base URL + AP
 
 ## 开启模型
 
-omp 的 `enabledModels` 是严格白名单，在 `~/.omp/agent/config.yml` 里为每个网关加一条 glob：
+如果你的 `~/.omp/agent/config.yml` 里已有 `enabledModels` 白名单，就为每个网关加一条 glob；没有这份白名单时，发现到的模型本来就可选：
 
 ```yaml
 enabledModels:
@@ -54,7 +55,7 @@ enabledModels:
 
 modelRoles:                             # 可选别名
   gw-opus: litellm/claude-opus-4-1:auto
-  ark-code: volcengine/ark-code-latest:auto
+  ark-code: volcengine/ark-code-latest:auto   # :auto 是 omp 的思考档位后缀
 ```
 
 之后与其他模型用法一致：
@@ -105,15 +106,15 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 
 | 写法 | omp 实际使用 | 适用场景 |
 | --- | --- | --- |
-| `KAFARA_API_KEY` | 该环境变量的值 | 常规做法——密钥只留在 shell 环境里 |
-| `!gpg -q -d ~/.omp/keys/kafara.gpg` | 该命令 stdout（去掉首尾空白） | 密钥放加密文件、`pass show …`、`op read …`、钥匙串查询 |
+| `LITELLM_API_KEY` | 该环境变量的值 | 常规做法——密钥只留在 shell 环境里 |
+| `!gpg -q -d ~/.omp/keys/gateway.gpg` | 该命令 stdout（去掉首尾空白） | 密钥放加密文件、`pass show …`、`op read …`、钥匙串查询 |
 | `sk-…` | 字面量本身 | 临时试用；此时文件里就是密钥 |
 
 所以这个文件可以放心进 dotfiles 仓库：它只记录密钥从哪来，不必包含密钥。登录入口同样只写引用——你粘贴的明文 key 如果已存在于某个环境变量里，它会改存那个变量名，并在输出里说明。完整的安全说明见 [SECURITY.md](SECURITY.md)。
 
-环境变量形式有两点要注意：变量必须在**启动 omp 的那个 shell** 里 export；没设置的名字会按 omp 规则当字面量发出去，表现为 401。命令形式的输出会缓存，交互式的 `gpg`/`op` 提示每会话只出现一次。
+环境变量形式有两点要注意：变量必须在**每个启动 omp 的 shell** 里 export；没设置的名字会按 omp 规则当字面量发出去，登录流程会直接这样报给你。`!command` 以你的用户身份经 `/bin/sh -c` 执行，omp 按进程缓存其输出，所以交互式的 `gpg`/`op` 提示每次 omp 运行只出现一次——登录本身会再跑一次。
 
-也可以直接手改：`extraModels` 和 `api` 是登录流程不问的两个字段，加载时会重新校验。
+也可以直接手改：`extraModels` 和 `api` 是登录流程不问的两个字段。每一行单独校验，写错只影响那一个网关；但只要还有坏行，登录入口会拒绝执行，而不是把文件原样写回时丢掉它。
 
 地址按「网关根」存储（`https://gw.example.com`，末尾的 `/v1` 会被去掉）：发现时由插件补 `/v1/models`，OpenAI 传输需要的 `/v1` 也由插件补。手改文件后执行 `omp models refresh` 刷新模型缓存。
 

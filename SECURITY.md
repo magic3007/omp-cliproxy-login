@@ -6,8 +6,8 @@ A gateway's `apiKey` in `~/.omp/agent/gateways-login.json` is a **key reference*
 
 | Reference | Example | Where the secret lives |
 | --- | --- | --- |
-| Environment variable name | `KAFARA_API_KEY` | your shell environment (`~/.common_shell_setup_local.sh`, a keychain export, …) |
-| Command | `!gpg -q -d ~/.omp/keys/kafara.gpg` | stdout of the command — an encrypted file, `pass`, `op read`, a keychain lookup |
+| Environment variable name | `LITELLM_API_KEY` | your shell environment (`~/.zshrc`, a keychain export, …) |
+| Command | `!gpg -q -d ~/.omp/keys/gateway.gpg` | stdout of the command — an encrypted file, `pass`, `op read`, a keychain lookup |
 | Literal key | `sk-…` | the config file itself, in plaintext |
 
 So the config file can be tracked in a dotfiles repository: write a reference and the file carries no secret. The plugin itself reads no environment variables and sends keys nowhere except to the gateway base URL you entered, as `Authorization: Bearer <key>` and `x-api-key: <key>`.
@@ -18,6 +18,8 @@ So the config file can be tracked in a dotfiles repository: write a reference an
 - An environment variable name that nothing sets is used as the literal key, as it is for omp. Prefer `!command` if you want a missing secret to fail loudly.
 - Keys are never written to logs. Log lines carry the gateway name, its base URL and model counts only.
 - Deleting a gateway's object from the config file removes its reference. There is no second copy in omp's credential store.
+- A `!command` reference is executable configuration: it runs as your user, through `/bin/sh -c`, every time omp needs the key (and once more at login). Keep the file at `0600` and never paste a reference you did not write.
+- Terminal `omp login` echoes what you type. Paste a literal key in omp's own `/login` dialog, which masks it, or type a reference instead.
 
 ## Reporting a vulnerability
 
