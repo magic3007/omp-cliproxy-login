@@ -2,49 +2,82 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
+<img src="assets/banner.png" alt="omp-cliproxy-login — a /login entry for any CLIProxyAPI gateway" />
+
+### Log in to any CLIProxyAPI gateway — type its URL + API key, get every chat model it serves.
+
+<a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
+<a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
+<a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
+<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-cliproxy-login?style=flat-square" /></a>
+
 </div>
 
-# omp-cliproxy-login
+<br>
 
-An [omp](https://github.com/oh-my-pi/oh-my-pi) extension that adds a **login entry for any CLIProxyAPI gateway**: type the gateway URL and an API key, and every chat model that key can reach appears in omp.
+An [omp](https://omp.sh) ([`@oh-my-pi/pi-coding-agent`](https://github.com/can1357/oh-my-pi), aka oh-my-pi) extension that turns any CLIProxyAPI deployment — the kind that ships a `management.html` admin panel — into a first-class login provider. Log in once from the terminal and the gateway's whole live chat-model catalog becomes selectable, without editing `models.yml`, without touching an environment variable.
 
-Works with any CLIProxyAPI deployment (the ones that ship a `management.html` panel).
+## Quick start
+
+```bash
+omp plugin install git:https://github.com/magic3007/omp-cliproxy-login
+omp plugin doctor                    # every check should be ok
+
+omp login                            # pick "CLIProxyAPI Gateway (API key)"
+                                     #   ① paste the gateway URL   (https://your-cliproxy.example.com)
+                                     #   ② paste the API key       (sk-…)
+
+omp models list | grep '^cliproxy'   # the gateway's chat models, freshly discovered
+omp -p --model cliproxy/devin/claude-opus-4-7 "reply with exactly: OK"
+```
+
+One more step, because omp's `enabledModels` is a **strict allow-list** — add this to `~/.omp/agent/config.yml`:
+
+```yaml
+enabledModels:
+  - cliproxy/*                          # or list individual cliproxy/… ids
+
+modelRoles:                             # optional alias
+  cliproxy-opus: cliproxy/devin/claude-opus-4-7:auto
+```
 
 ## What you get
 
 | Item | Value |
 | --- | --- |
 | Login entry | `/login` (TUI) or `omp login` (terminal) → `CLIProxyAPI Gateway (API key)` |
-| Login input | ① gateway URL (e.g. `https://your-cliproxy.example.com`) ② API key |
-| Credential source | typed by you at login; **never** read from environment variables or config files |
+| Login input | ① gateway URL ② API key — both typed by you, **never** read from env vars or config files |
 | Model prefix | `cliproxy/<gateway model id>`, e.g. `cliproxy/devin/claude-opus-4-7`, `cliproxy/grok-4.7` |
 | Wire | `anthropic-messages` (`POST /v1/messages`) |
-| Model source | `GET <gateway>/v1/models`, re-fetched on login and discovery refresh |
+| Model source | `GET <gateway>/v1/models`, re-fetched on login and on discovery refresh |
+| Logout | `/logout` or `omp auth` handles the stored credential like any built-in provider's |
 
-Login flow: pick the provider → type the gateway URL → type the API key → the extension immediately validates the pair with one `/v1/models` call. A bad input fails the login and stores nothing:
+The login **validates the URL + key pair before storing anything** by pulling the model list once:
 
 - Bad URL: `"xxx" is not an absolute URL (...)`
 - Bad key: `the gateway rejected this API key (HTTP 401)`
 
-The URL is remembered in `~/.omp/agent/cliproxy-login.json`, so the next login prefills it (press Enter to keep it):
+A stored URL lives in `~/.omp/agent/cliproxy-login.json` (`0600`), so the next login prefills it — press Enter to keep it, or type a new one to switch gateways (the provider re-registers immediately, no restart):
 
 ```json
 { "baseUrl": "https://your-cliproxy.example.com" }
 ```
 
-## Install
+## Behaviour notes
 
-```bash
-omp plugin install git:https://github.com/magic3007/omp-cliproxy-login
-omp plugin doctor          # the entry should be ok
-```
+- **Non-chat models are filtered out.** Gateways list image, video and speech models (`gpt-image-*`, `grok-imagine-*`, `grok-tts`, `gemini-*-image`, …) next to the chat ones; the extension drops them by id keyword, so the picker only holds usable chat models (`NON_CHAT_MODEL` in `src/index.ts`).
+- **Metadata defaults.** `/v1/models` reports no context or output limits, so every model registers with 200k / 64k, `reasoning: true`, `input: [text, image]`.
+- **No models while logged out.** Discovery fails loudly instead of reporting an empty catalog — an empty "success" would be cached as authoritative and hide the models a later login unlocks.
+- **One gateway per install.** To front two gateways, install the repo twice under different `PROVIDER_ID`s, or declare the second one in `~/.omp/agent/models.yml`.
 
-Local development (edits take effect immediately):
+## Troubleshooting
 
-```bash
-cd <repo>
-omp plugin link .
-```
+| Symptom | Cause / fix |
+| --- | --- |
+| Model "cliproxy/…" not found while logged in | `enabledModels` lacks `cliproxy/*` — see Quick start |
+| `the gateway rejected this API key (HTTP 401)` | The key is not valid for the URL you gave, or it belongs to a different deployment — each CLIProxyAPI instance has its own key list |
+| Login shows no models at all | `/v1/models` answered but only contained image/video/speech entries — nothing chat-usable exists for that key |
+| `omp plugin install git:…` fails behind a corporate proxy | See below |
 
 ### Behind a TLS-intercepting proxy
 
@@ -55,44 +88,20 @@ git clone https://github.com/magic3007/omp-cliproxy-login ~/src/omp-cliproxy-log
 cd ~/src/omp-cliproxy-login && omp plugin link .
 ```
 
-Remove: `omp plugin disable omp-cliproxy-login`, or `omp plugin uninstall omp-cliproxy-login`.
-
-## Use
+## Development
 
 ```bash
-omp login                  # pick interactively, or: omp login cliproxy
-# type the gateway URL, then the sk-… key
-omp models list | grep '^cliproxy'                 # the gateway's chat models
-omp -p --model cliproxy/devin/claude-opus-4-7 "reply with exactly: OK"
+git clone https://github.com/magic3007/omp-cliproxy-login
+cd omp-cliproxy-login
+omp plugin link .        # edits in src/ take effect immediately
 ```
 
-Inside the TUI, `/login` and `/logout` are the same entry points.
+Zero dependencies: the entry point is TypeScript source (`package.json#omp.extensions: ["src/index.ts"]`) loaded directly by omp's Bun runtime. Host types come through `import type` only; the one runtime host dependency is `getAgentDir()`, taken from the injected `pi.pi`.
 
-## Required: allow-list
+`assets/` holds the shared artwork: `logo.png` (transparent symbol, for icons and social preview) and `banner.png` (the README hero).
 
-omp's `enabledModels` is a **strict allow-list**; a logged-in model is still unselectable while it is missing from it. Add to `~/.omp/agent/config.yml`:
+Remove: `omp plugin disable omp-cliproxy-login` (keep, stop loading) or `omp plugin uninstall omp-cliproxy-login`.
 
-```yaml
-enabledModels:
-  - cliproxy/*        # or list each cliproxy/devin/claude-opus-4-7 … individually
-```
+## License
 
-Optional role alias:
-
-```yaml
-modelRoles:
-  cliproxy-opus: cliproxy/devin/claude-opus-4-7:auto
-```
-
-## Behaviour notes
-
-- **Non-chat models are filtered out.** Gateways list image, video and speech models (`gpt-image-*`, `grok-imagine-*`, `grok-tts`, `gemini-*-image`, …) next to the chat ones; the extension drops them by id keyword (`NON_CHAT_MODEL` in `src/index.ts`) so the picker only holds usable chat models.
-- **Metadata defaults.** `/v1/models` reports no context or output limits, so every model is registered with 200k / 64k, `reasoning: true`, `input: [text, image]`.
-- **No models while logged out.** Discovery fails loudly instead of reporting an empty catalog — an empty "success" would be cached as authoritative and hide the models unlocked by a later login.
-- **Switching gateways.** Type a new URL in the next `/login`; the provider is re-registered immediately, no restart needed.
-- **One gateway per install.** To run two gateways, install the repo twice with different `PROVIDER_ID`s, or declare the second one in `~/.omp/agent/models.yml`.
-
-## Implementation notes
-
-- Zero dependencies; the entry point is TypeScript source (`package.json#omp.extensions`) loaded directly by omp's Bun runtime.
-- Host types are imported with `import type` only; at runtime the extension uses just `getAgentDir()` from the injected `pi.pi`.
+[MIT](LICENSE)
