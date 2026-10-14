@@ -8,11 +8,11 @@
 
 <a href="https://www.npmjs.com/package/omp-model-gateway"><img alt="npm version" src="https://img.shields.io/npm/v/omp-model-gateway?style=flat-square&color=cb3837" /></a>&nbsp;
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
-<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
-<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
+<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-model-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
+<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-model-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
-<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
+<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-model-gateway?style=flat-square" /></a>
 
 </div>
 
@@ -30,7 +30,7 @@ Needs [omp](https://omp.sh) ≥ 18.2.3 (`@oh-my-pi/pi-coding-agent`), the agent 
 omp plugin install omp-model-gateway
 ```
 
-Also installable straight from git: `omp plugin install github:magic3007/omp-gateway`. Do not shorten the npm name — the package `omp-gateway` is an unrelated project.
+Also installable straight from git: `omp plugin install github:magic3007/omp-model-gateway`. Do not shorten the npm name — the package `omp-gateway` is an unrelated project.
 
 ## Log in
 
@@ -122,8 +122,8 @@ Base URLs are stored as the gateway root (`https://gw.example.com`, a trailing `
 ## Development
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway
-cd omp-gateway
+git clone https://github.com/magic3007/omp-model-gateway
+cd omp-model-gateway
 bun install              # dev only: TypeScript and the omp host types
 omp plugin link .        # edits in src/ take effect on the next omp start
 bun run typecheck && bun test

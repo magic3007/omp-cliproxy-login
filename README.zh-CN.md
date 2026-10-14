@@ -8,11 +8,11 @@
 
 <a href="https://www.npmjs.com/package/omp-model-gateway"><img alt="npm version" src="https://img.shields.io/npm/v/omp-model-gateway?style=flat-square&color=cb3837" /></a>&nbsp;
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
-<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
-<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
+<a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-model-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
+<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-model-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="零依赖" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
-<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
+<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-model-gateway?style=flat-square" /></a>
 
 </div>
 
@@ -30,7 +30,7 @@
 omp plugin install omp-model-gateway
 ```
 
-也可以直接从 git 安装：`omp plugin install github:magic3007/omp-gateway`。不要省略 npm 包名里的 `model`——`omp-gateway` 是另一个无关项目。
+也可以直接从 git 安装：`omp plugin install github:magic3007/omp-model-gateway`。不要省略 npm 包名里的 `model`——`omp-gateway` 是另一个无关项目。
 
 ## 登录
 
@@ -122,8 +122,8 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 ## 开发
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway
-cd omp-gateway
+git clone https://github.com/magic3007/omp-model-gateway
+cd omp-model-gateway
 bun install              # 仅开发用：TypeScript 与 omp 宿主类型
 omp plugin link .        # 改 src/ 下次启动 omp 生效
 bun run typecheck && bun test

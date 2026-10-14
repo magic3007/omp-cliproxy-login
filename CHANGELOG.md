@@ -8,8 +8,8 @@ Now on npm.
 
 ### Changed
 
-- **Renamed** the package and plugin id to `omp-model-gateway`: the npm name `omp-gateway` belongs to an unrelated project, and the repository keeps its own name. Install with `omp plugin install omp-model-gateway`. An install that came from the git URL keeps working, but must move id once: `omp plugin uninstall omp-gateway`, then install the new one.
-- npm is now the documented install channel; `github:magic3007/omp-gateway` stays supported.
+- **Renamed** the package, the plugin id and the repository to `omp-model-gateway`: the npm name `omp-gateway` belongs to an unrelated project. Install with `omp plugin install omp-model-gateway`. An install that came from the git URL keeps working, but must move id once: `omp plugin uninstall omp-gateway`, then install the new one.
+- npm is now the documented install channel; `github:magic3007/omp-model-gateway` stays supported.
 - Keywords `litellm` and `one-api` added, for npm search.
 
 ### Added
@@ -29,7 +29,7 @@ Any gateway, under any name, with the key kept wherever you keep secrets.
 
 ### Changed
 
-- **Renamed** the repository, package and plugin to `omp-gateway` (was `omp-gateway-login`). Uninstall the old id once: `omp plugin uninstall omp-gateway-login`, then install `github:magic3007/omp-gateway`.
+- **Renamed** the repository, package and plugin to `omp-gateway` (was `omp-gateway-login`). Uninstall the old id once: `omp plugin uninstall omp-gateway-login`, then install `github:magic3007/omp-model-gateway`.
 - A pasted literal key that an environment variable already holds is stored as that variable's name, and the login output says which one. A literal nothing holds is stored as typed and the login output says so — a secret never reaches the file silently.
 - Docs and prompt examples use vendor-neutral gateway names; the config file (`~/.omp/agent/gateways-login.json`) and its format are unchanged.
 - Base URLs with a query string or fragment are rejected at login: the derived endpoints would have dropped them silently.
@@ -82,7 +82,7 @@ First release.
 
 - Discovery no longer reports an empty catalog while logged out. That empty success was cached as authoritative and hid the models a later login unlocked until the cache TTL expired.
 
-[0.4.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.4.0
-[0.3.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.3.0
-[0.2.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.2.0
-[0.1.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.1.0
+[0.4.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.4.0
+[0.3.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.3.0
+[0.2.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.2.0
+[0.1.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.1.0

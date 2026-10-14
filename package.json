@@ -5,13 +5,13 @@
   "type": "module",
   "license": "MIT",
   "author": "magic3007",
-  "homepage": "https://github.com/magic3007/omp-gateway#readme",
+  "homepage": "https://github.com/magic3007/omp-model-gateway#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/magic3007/omp-gateway.git"
+    "url": "git+https://github.com/magic3007/omp-model-gateway.git"
   },
   "bugs": {
-    "url": "https://github.com/magic3007/omp-gateway/issues"
+    "url": "https://github.com/magic3007/omp-model-gateway/issues"
   },
   "keywords": [
     "omp",

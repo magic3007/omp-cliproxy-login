@@ -23,6 +23,6 @@ So the config file can be tracked in a dotfiles repository: write a reference an
 
 ## Reporting a vulnerability
 
-Report privately through a [GitHub security advisory](https://github.com/magic3007/omp-gateway/security/advisories/new) — not a public issue. Credential-handling problems and accidental key exposure count.
+Report privately through a [GitHub security advisory](https://github.com/magic3007/omp-model-gateway/security/advisories/new) — not a public issue. Credential-handling problems and accidental key exposure count.
 
 Expect an acknowledgement within a week. Fixes ship in a patch release with the advisory published after it.
