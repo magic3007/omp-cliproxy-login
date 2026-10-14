@@ -40,8 +40,10 @@ A `message_end` event naming `provider: <name>` proves the request went through 
 
 1. Bump `version` in `package.json`.
 2. Add the version's section to `CHANGELOG.md`, with its link at the bottom.
-3. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin master --tags`.
+3. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin master --tags`. The tag runs `.github/workflows/publish.yml`: typecheck, tests, then `npm publish --provenance`. A version npm already has is refused, so the tag and `package.json#version` must agree.
 4. Create the GitHub release from the tag, pasting that CHANGELOG section.
+
+The publish needs a repository secret `NPM_TOKEN`: an npm automation token for the `omp-model-gateway` package. To publish by hand instead, run `npm publish --provenance` from a checkout whose `version` is bumped — provenance needs the GitHub Actions OIDC token, so a local publish carries none.
 
 ## Reporting issues
 

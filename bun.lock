@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "omp-gateway",
+      "name": "omp-model-gateway",
       "devDependencies": {
         "@oh-my-pi/pi-coding-agent": "^18.10.4",
         "@types/bun": "^1.3.0",

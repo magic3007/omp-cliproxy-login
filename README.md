@@ -2,10 +2,11 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-<img src="assets/banner.png" alt="omp-gateway — log in to any base-URL + API-key model gateway" />
+<img src="assets/banner.png" alt="omp-model-gateway — log in to any base-URL + API-key model gateway" />
 
 ### Log in to any model gateway with a base URL and an API key — every chat model it serves becomes selectable.
 
+<a href="https://www.npmjs.com/package/omp-model-gateway"><img alt="npm version" src="https://img.shields.io/npm/v/omp-model-gateway?style=flat-square&color=cb3837" /></a>&nbsp;
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
 <a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
@@ -26,10 +27,10 @@ One installation fronts **as many gateways as you configure**. You name each one
 Needs [omp](https://omp.sh) ≥ 18.2.3 (`@oh-my-pi/pi-coding-agent`), the agent that loads this extension.
 
 ```bash
-omp plugin install github:magic3007/omp-gateway
+omp plugin install omp-model-gateway
 ```
 
-Install from the git URL, not by bare name: the npm package `omp-gateway` belongs to an unrelated project.
+Also installable straight from git: `omp plugin install github:magic3007/omp-gateway`. Do not shorten the npm name — the package `omp-gateway` is an unrelated project.
 
 ## Log in
 
@@ -130,7 +131,7 @@ bun run typecheck && bun test
 
 No runtime dependencies: the entry point is TypeScript source (`package.json#omp.extensions: ["src/index.ts"]`) loaded directly by omp's Bun runtime. Host types come through `import type` only.
 
-Remove: `omp plugin disable omp-gateway` (keep, stop loading) or `omp plugin uninstall omp-gateway`.
+Remove: `omp plugin disable omp-model-gateway` (keep, stop loading) or `omp plugin uninstall omp-model-gateway`.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes, [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](SECURITY.md) for how API keys are stored.
 

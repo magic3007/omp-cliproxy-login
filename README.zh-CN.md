@@ -2,10 +2,11 @@
 
 [English](README.md) · **简体中文**
 
-<img src="assets/banner.png" alt="omp-gateway — 面向任意 base URL + API Key 网关的登录入口" />
+<img src="assets/banner.png" alt="omp-model-gateway — 面向任意 base URL + API Key 网关的登录入口" />
 
 ### 输入网关地址和 API Key 即可登录，该网关下的全部聊天模型直接可选。
 
+<a href="https://www.npmjs.com/package/omp-model-gateway"><img alt="npm version" src="https://img.shields.io/npm/v/omp-model-gateway?style=flat-square&color=cb3837" /></a>&nbsp;
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
 <a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/magic3007/omp-gateway/ci.yml?branch=master&style=flat-square&label=CI" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
@@ -26,10 +27,10 @@
 需要 [omp](https://omp.sh) ≥ 18.2.3（`@oh-my-pi/pi-coding-agent`），即加载本扩展的 agent。
 
 ```bash
-omp plugin install github:magic3007/omp-gateway
+omp plugin install omp-model-gateway
 ```
 
-只能用 git 地址安装，不要用裸包名：npm 上的 `omp-gateway` 是另一个无关项目。
+也可以直接从 git 安装：`omp plugin install github:magic3007/omp-gateway`。不要省略 npm 包名里的 `model`——`omp-gateway` 是另一个无关项目。
 
 ## 登录
 
@@ -130,7 +131,7 @@ bun run typecheck && bun test
 
 无运行时依赖：入口是 TS 源码（`package.json#omp.extensions: ["src/index.ts"]`），由 omp 的 Bun 运行时直接加载；宿主类型只走 `import type`。
 
-卸载：`omp plugin disable omp-gateway`（停用）或 `omp plugin uninstall omp-gateway`。
+卸载：`omp plugin disable omp-model-gateway`（停用）或 `omp plugin uninstall omp-model-gateway`。
 
 发版记录见 [CHANGELOG.md](CHANGELOG.md)；提 PR 前先看 [CONTRIBUTING.md](CONTRIBUTING.md)；Key 的存储方式见 [SECURITY.md](SECURITY.md)。
 

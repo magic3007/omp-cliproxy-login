@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-15
+
+Now on npm.
+
+### Changed
+
+- **Renamed** the package and plugin id to `omp-model-gateway`: the npm name `omp-gateway` belongs to an unrelated project, and the repository keeps its own name. Install with `omp plugin install omp-model-gateway`. An install that came from the git URL keeps working, but must move id once: `omp plugin uninstall omp-gateway`, then install the new one.
+- npm is now the documented install channel; `github:magic3007/omp-gateway` stays supported.
+- Keywords `litellm` and `one-api` added, for npm search.
+
+### Added
+
+- `.github/workflows/publish.yml`: pushing a `v*` tag runs the typecheck and the tests, then publishes to npm with `--provenance`.
+
 ## [0.3.0] - 2026-10-15
 
 Any gateway, under any name, with the key kept wherever you keep secrets.
@@ -68,6 +82,7 @@ First release.
 
 - Discovery no longer reports an empty catalog while logged out. That empty success was cached as authoritative and hid the models a later login unlocked until the cache TTL expired.
 
+[0.4.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.4.0
 [0.3.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.3.0
 [0.2.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.2.0
 [0.1.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.1.0

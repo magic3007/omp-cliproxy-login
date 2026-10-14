@@ -1,9 +1,8 @@
 {
-  "name": "omp-gateway",
-  "version": "0.3.0",
+  "name": "omp-model-gateway",
+  "version": "0.4.0",
   "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, one-api, Volcengine Ark coding plan, …) and expose every chat model it serves",
   "type": "module",
-  "private": true,
   "license": "MIT",
   "author": "magic3007",
   "homepage": "https://github.com/magic3007/omp-gateway#readme",
@@ -20,6 +19,8 @@
     "oh-my-pi",
     "pi-coding-agent",
     "cliproxyapi",
+    "litellm",
+    "one-api",
     "llm-api-gateway",
     "model-provider",
     "login"
