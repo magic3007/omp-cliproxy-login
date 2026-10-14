@@ -35,7 +35,7 @@ jobs:
           if npm view "omp-model-gateway@$version" version >/dev/null 2>&1; then
             echo "omp-model-gateway@$version is already on npm — nothing to publish"
           else
-            npm publish --provenance
+            npm publish --provenance --access public
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
