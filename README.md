@@ -46,6 +46,15 @@ cd <repo>
 omp plugin link .
 ```
 
+### Behind a TLS-intercepting proxy
+
+`omp plugin install git:…` shells out to `bun install`, whose git client can fail to clone through a corporate proxy (`git clone` alone usually still works). Clone by hand and link the checkout:
+
+```bash
+git clone https://github.com/magic3007/omp-cliproxy-login ~/src/omp-cliproxy-login
+cd ~/src/omp-cliproxy-login && omp plugin link .
+```
+
 Remove: `omp plugin disable omp-cliproxy-login`, or `omp plugin uninstall omp-cliproxy-login`.
 
 ## Use

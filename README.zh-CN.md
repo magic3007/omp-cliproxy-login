@@ -46,6 +46,15 @@ cd <repo>
 omp plugin link .
 ```
 
+### 公司 TLS 代理下装不上
+
+`omp plugin install git:…` 实际调用 `bun install`，它的 git 客户端在公司代理下可能 clone 失败（`git clone` 本身通常没问题）。手动 clone 后软链进去：
+
+```bash
+git clone https://github.com/magic3007/omp-cliproxy-login ~/src/omp-cliproxy-login
+cd ~/src/omp-cliproxy-login && omp plugin link .
+```
+
 卸载：`omp plugin disable omp-cliproxy-login` 或 `omp plugin uninstall omp-cliproxy-login`。
 
 ## 使用
