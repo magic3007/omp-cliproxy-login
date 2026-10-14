@@ -2,15 +2,15 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-<img src="assets/banner.png" alt="omp-gateway-login — log in to any base-URL + API-key model gateway" />
+<img src="assets/banner.png" alt="omp-gateway — log in to any base-URL + API-key model gateway" />
 
 ### Log in to any model gateway with a base URL and an API key — every chat model it serves becomes selectable.
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
-<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway-login?style=flat-square&color=5f43e9" /></a>&nbsp;
+<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
-<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway-login?style=flat-square" /></a>
+<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
 
 </div>
 
@@ -23,18 +23,18 @@ One installation fronts **as many gateways as you configure**. You name each one
 ## Quick start
 
 ```bash
-omp plugin install git:https://github.com/magic3007/omp-gateway-login
+omp plugin install git:https://github.com/magic3007/omp-gateway
 omp plugin doctor                    # every check should be ok
 
 omp login                            # pick "Custom gateway (name + base URL + API key)"
-                                     #   ① name        e.g. mafia
-                                     #   ② base URL    e.g. https://api.example.com
+                                     #   ① name        e.g. litellm
+                                     #   ② base URL    e.g. https://gw.example.com
                                      #   ③ API key     sk-…
                                      #   ④ extra ids   Enter for none
-# → Saved gateway "mafia" (48 chat models) … select them as mafia/<id>.
+# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
 
-omp models list | grep -E '^(mafia|kafara|volcengine) '
-omp -p --model mafia/claude-opus-5-5 "reply with exactly: OK"
+omp models list | grep -E '^litellm '
+omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 ```
 
 Repeat the login for each gateway you want — the plugin remembers all of them and registers them on every start.
@@ -43,12 +43,11 @@ One more step, because omp's `enabledModels` is a **strict allow-list**: add one
 
 ```yaml
 enabledModels:
-  - mafia/*
-  - kafara/*
+  - litellm/*
   - volcengine/*
 
 modelRoles:                             # optional aliases
-  mafia-opus: mafia/claude-opus-5-5:auto
+  gw-opus: litellm/claude-opus-4-1:auto
   ark-code: volcengine/ark-code-latest:auto
 ```
 
@@ -58,7 +57,7 @@ modelRoles:                             # optional aliases
 | --- | --- |
 | Login entry | `/login` (TUI) or `omp login` (terminal) → `Custom gateway (name + base URL + API key)` |
 | Login input | name, base URL, API key, optional extra model ids — all typed by you, **never** read from env vars |
-| Model prefix | `<name>/<model id>`, e.g. `mafia/claude-opus-5-5`, `kafara/devin/claude-opus-4-7` |
+| Model prefix | `<name>/<model id>`, e.g. `litellm/claude-opus-4-1`, `volcengine/ark-code-latest` |
 | Wire | `anthropic-messages` by default, `openai-completions` per gateway in the config file |
 | Model source | `GET <base URL>/v1/models`, re-fetched on login and on discovery refresh |
 | Gateways per install | unlimited — one entry per name in the config file |
@@ -78,9 +77,7 @@ Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`, p
 ```json
 {
   "providers": [
-    { "name": "kafara", "baseUrl": "https://ai.kafara.men", "api": "anthropic-messages",
-      "apiKey": "sk-…", "extraModels": [] },
-    { "name": "mafia", "baseUrl": "https://api.appintheloop.com", "api": "anthropic-messages",
+    { "name": "litellm", "baseUrl": "https://gw.example.com", "api": "anthropic-messages",
       "apiKey": "sk-…", "extraModels": [] },
     { "name": "volcengine", "baseUrl": "https://ark.cn-beijing.volces.com/api/coding",
       "api": "anthropic-messages", "apiKey": "…",
@@ -127,15 +124,15 @@ Different gateways describe their catalogs differently, so the plugin normalizes
 `omp plugin install git:…` shells out to `bun install`, whose git client can fail to clone through a corporate proxy (`git clone` alone usually still works). Clone by hand and link the checkout:
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway-login ~/src/omp-gateway-login
-cd ~/src/omp-gateway-login && omp plugin link .
+git clone https://github.com/magic3007/omp-gateway ~/src/omp-gateway
+cd ~/src/omp-gateway && omp plugin link .
 ```
 
 ## Development
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway-login
-cd omp-gateway-login
+git clone https://github.com/magic3007/omp-gateway
+cd omp-gateway
 omp plugin link .        # edits in src/ take effect on the next omp start
 ```
 
@@ -143,7 +140,7 @@ Zero dependencies: the entry point is TypeScript source (`package.json#omp.exten
 
 `assets/` holds the shared artwork: `logo.png` (transparent symbol, for icons and social preview) and `banner.png` (the README hero).
 
-Remove: `omp plugin disable omp-gateway-login` (keep, stop loading) or `omp plugin uninstall omp-gateway-login`.
+Remove: `omp plugin disable omp-gateway` (keep, stop loading) or `omp plugin uninstall omp-gateway`.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 

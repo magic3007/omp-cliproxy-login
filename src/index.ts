@@ -12,7 +12,7 @@
  *   validates them with one model-list call, then stores the gateway and
  *   registers `<name>` as a provider.
  * - Every stored gateway is registered at load, so one installation fronts as
- *   many gateways as the config file lists (`mafia`, `kafara`, `volcengine`, …),
+ *   many gateways as the config file lists (`litellm`, `volcengine`, …),
  *   each reachable as `<name>/<model id>`.
  * - Nothing is read from environment variables: everything comes from the login
  *   prompts and lives in the plugin's own config file (mode 0600).
@@ -66,7 +66,7 @@ const DEAD_STATUS = /^(?:shutdown|deprecated|retired|deleted|offline)$/i;
 
 /** One configured gateway. */
 export interface GatewayEntry {
-	/** Provider id and model prefix, e.g. `mafia` in `mafia/claude-opus-5-5`. */
+	/** Provider id and model prefix, e.g. `litellm` in `litellm/claude-opus-4-1`. */
 	name: string;
 	/** Gateway root, e.g. `https://gw.example.com`; a trailing `/v1` is accepted too. */
 	baseUrl: string;
@@ -343,8 +343,8 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 				const saved = readEntries();
 				const name = normalizeGatewayName(
 					await callbacks.onPrompt({
-						message: "Name this gateway (it becomes the model prefix, e.g. mafia/claude-opus-5-5)",
-						placeholder: saved.length > 0 ? saved.map(entry => entry.name).join(", ") : "mafia",
+						message: "Name this gateway (it becomes the model prefix, e.g. litellm/claude-opus-4-1)",
+						placeholder: saved.length > 0 ? saved.map(entry => entry.name).join(", ") : "litellm",
 					}),
 				);
 				const existing = saved.find(entry => entry.name === name);

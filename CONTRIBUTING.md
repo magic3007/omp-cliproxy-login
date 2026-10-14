@@ -5,8 +5,8 @@ Thanks for taking a look. This is a small, dependency-free omp extension, so the
 ## Development setup
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway-login
-cd omp-gateway-login
+git clone https://github.com/magic3007/omp-gateway
+cd omp-gateway
 omp plugin link .        # omp loads src/index.ts straight from the checkout; edits take effect on the next omp start
 ```
 
@@ -37,4 +37,4 @@ Open an issue with:
 - what you expected versus what happened,
 - the relevant log lines from `~/.omp/logs/` — redact your API key and gateway host if you prefer.
 
-Security-relevant reports (credential handling, accidental exposure of a key) should go through a private [security advisory](https://github.com/magic3007/omp-gateway-login/security/advisories/new) instead of a public issue.
+Security-relevant reports (credential handling, accidental exposure of a key) should go through a private [security advisory](https://github.com/magic3007/omp-gateway/security/advisories/new) instead of a public issue.

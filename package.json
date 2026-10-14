@@ -1,17 +1,17 @@
 {
-  "name": "omp-gateway-login",
-  "version": "0.2.0",
-  "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, Ark coding plan, …) and expose every chat model it serves",
+  "name": "omp-gateway",
+  "version": "0.3.0",
+  "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, one-api, Volcengine Ark coding plan, …) and expose every chat model it serves",
   "type": "module",
   "license": "MIT",
   "author": "magic3007",
-  "homepage": "https://github.com/magic3007/omp-gateway-login#readme",
+  "homepage": "https://github.com/magic3007/omp-gateway#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/magic3007/omp-gateway-login.git"
+    "url": "git+https://github.com/magic3007/omp-gateway.git"
   },
   "bugs": {
-    "url": "https://github.com/magic3007/omp-gateway-login/issues"
+    "url": "https://github.com/magic3007/omp-gateway/issues"
   },
   "keywords": [
     "omp",

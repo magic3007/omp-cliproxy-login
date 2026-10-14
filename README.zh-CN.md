@@ -2,15 +2,15 @@
 
 [English](README.md) · **简体中文**
 
-<img src="assets/banner.png" alt="omp-gateway-login — 面向任意 base URL + API Key 网关的登录入口" />
+<img src="assets/banner.png" alt="omp-gateway — 面向任意 base URL + API Key 网关的登录入口" />
 
 ### 输入网关地址和 API Key 即可登录，该网关下的全部聊天模型直接可选。
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
-<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway-login?style=flat-square&color=5f43e9" /></a>&nbsp;
+<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="零依赖" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
-<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway-login?style=flat-square" /></a>
+<a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
 
 </div>
 
@@ -23,18 +23,18 @@
 ## 快速开始
 
 ```bash
-omp plugin install git:https://github.com/magic3007/omp-gateway-login
+omp plugin install git:https://github.com/magic3007/omp-gateway
 omp plugin doctor                    # 每项检查都应是 ok
 
 omp login                            # 选 "Custom gateway (name + base URL + API key)"
-                                     #   ① 名字     如 mafia
-                                     #   ② 网关地址 如 https://api.example.com
+                                     #   ① 名字     如 litellm
+                                     #   ② 网关地址 如 https://gw.example.com
                                      #   ③ API Key  sk-…
                                      #   ④ 额外模型 id（回车跳过）
-# → Saved gateway "mafia" (48 chat models) … select them as mafia/<id>.
+# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
 
-omp models list | grep -E '^(mafia|kafara|volcengine) '
-omp -p --model mafia/claude-opus-5-5 "reply with exactly: OK"
+omp models list | grep -E '^litellm '
+omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 ```
 
 每个网关重复一次登录即可；插件会记住全部网关，并在每次启动时注册它们。
@@ -43,12 +43,11 @@ omp -p --model mafia/claude-opus-5-5 "reply with exactly: OK"
 
 ```yaml
 enabledModels:
-  - mafia/*
-  - kafara/*
+  - litellm/*
   - volcengine/*
 
 modelRoles:                             # 可选别名
-  mafia-opus: mafia/claude-opus-5-5:auto
+  gw-opus: litellm/claude-opus-4-1:auto
   ark-code: volcengine/ark-code-latest:auto
 ```
 
@@ -58,7 +57,7 @@ modelRoles:                             # 可选别名
 | --- | --- |
 | 登录入口 | `/login`（TUI）或 `omp login`（终端）→ `Custom gateway (name + base URL + API key)` |
 | 登录输入 | 名字、网关地址、API Key、可选额外模型 id——全部手动输入，**不**读环境变量 |
-| 模型前缀 | `<名字>/<模型 id>`，如 `mafia/claude-opus-5-5`、`kafara/devin/claude-opus-4-7` |
+| 模型前缀 | `<名字>/<模型 id>`，如 `litellm/claude-opus-4-1`、`volcengine/ark-code-latest` |
 | 传输 | 默认 `anthropic-messages`，可在配置文件里按网关改成 `openai-completions` |
 | 模型来源 | `GET <网关地址>/v1/models`，登录与发现刷新时重新拉取 |
 | 网关数量 | 不限，配置文件里每个名字一条 |
@@ -78,9 +77,7 @@ modelRoles:                             # 可选别名
 ```json
 {
   "providers": [
-    { "name": "kafara", "baseUrl": "https://ai.kafara.men", "api": "anthropic-messages",
-      "apiKey": "sk-…", "extraModels": [] },
-    { "name": "mafia", "baseUrl": "https://api.appintheloop.com", "api": "anthropic-messages",
+    { "name": "litellm", "baseUrl": "https://gw.example.com", "api": "anthropic-messages",
       "apiKey": "sk-…", "extraModels": [] },
     { "name": "volcengine", "baseUrl": "https://ark.cn-beijing.volces.com/api/coding",
       "api": "anthropic-messages", "apiKey": "…",
@@ -127,15 +124,15 @@ modelRoles:                             # 可选别名
 `omp plugin install git:…` 实际调用 `bun install`，它的 git 客户端在公司代理下可能 clone 失败（`git clone` 本身通常没问题）。手动 clone 后软链进去：
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway-login ~/src/omp-gateway-login
-cd ~/src/omp-gateway-login && omp plugin link .
+git clone https://github.com/magic3007/omp-gateway ~/src/omp-gateway
+cd ~/src/omp-gateway && omp plugin link .
 ```
 
 ## 开发
 
 ```bash
-git clone https://github.com/magic3007/omp-gateway-login
-cd omp-gateway-login
+git clone https://github.com/magic3007/omp-gateway
+cd omp-gateway
 omp plugin link .        # 改 src/ 下次启动 omp 生效
 ```
 
@@ -143,7 +140,7 @@ omp plugin link .        # 改 src/ 下次启动 omp 生效
 
 `assets/` 是共用美术资源：`logo.png`（透明底图标，可用于社交预览/图标）、`banner.png`（README 头图）。
 
-卸载：`omp plugin disable omp-gateway-login`（停用）或 `omp plugin uninstall omp-gateway-login`。
+卸载：`omp plugin disable omp-gateway`（停用）或 `omp plugin uninstall omp-gateway`。
 
 发版记录见 [CHANGELOG.md](CHANGELOG.md)；提 PR 前先看 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
