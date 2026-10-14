@@ -17,7 +17,7 @@
  * - Nothing is read from environment variables: everything comes from the login
  *   prompts and lives in the plugin's own config file (mode 0600).
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { ExtensionAPI, ExtensionContext, ProviderModelConfig } from "@oh-my-pi/pi-coding-agent";
 
@@ -57,9 +57,12 @@ const REQUEST_TIMEOUT_MS = 20_000;
 /**
  * Catalog ids that are not chat models. Gateways list image, video and speech
  * models next to the chat ones; registering those as chat models would only
- * produce a broken selector entry, so they are dropped.
+ * produce a broken selector entry, so they are dropped. Matched at an id
+ * boundary *or* at the start, because ids like `tts-1` and `whisper-1` carry no
+ * prefix.
  */
-const NON_CHAT_MODEL = /[-_/.](?:image|images|imagine|video|tts|voice|whisper|embed|embeddings|rerank|seedream|seedance)/i;
+const NON_CHAT_MODEL =
+	/(?:^|[-_/.])(?:image|images|imagine|video|tts|voice|whisper|embed|embeddings|rerank|dall-e|seedream|seedance)/i;
 
 /** Catalog `status` values marking a model the gateway no longer serves. */
 const DEAD_STATUS = /^(?:shutdown|deprecated|retired|deleted|offline)$/i;
@@ -91,10 +94,31 @@ export interface GatewayModel {
 	acceptsImages: boolean;
 }
 
-/** `…/v1/models` for a gateway root written with or without a trailing `/v1`. */
-function modelsEndpoint(baseUrl: string): string {
-	const root = baseUrl.trim().replace(/\/+$/, "");
-	return root.endsWith("/v1") ? `${root}/models` : `${root}/v1/models`;
+/**
+ * Gateway root without a trailing slash or `/v1`: the two wires disagree on
+ * where `/v1` belongs, so every entry is stored as the root and the suffix is
+ * added per use ({@link modelsEndpoint}, {@link providerBaseUrl}).
+ */
+function gatewayRoot(baseUrl: string): string {
+	return baseUrl
+		.trim()
+		.replace(/\/+$/, "")
+		.replace(/\/v1$/, "");
+}
+
+/** Catalog endpoint of a gateway root. */
+export function modelsEndpoint(baseUrl: string): string {
+	return `${gatewayRoot(baseUrl)}/v1/models`;
+}
+
+/**
+ * Base URL to hand omp for a wire. `anthropic-messages` appends `/v1/messages`
+ * to what it is given, while `openai-completions` appends `/chat/completions`
+ * only — so the OpenAI wire needs the `/v1` the Anthropic wire must not see.
+ */
+export function providerBaseUrl(entry: Pick<GatewayEntry, "baseUrl" | "api">): string {
+	const root = gatewayRoot(entry.baseUrl);
+	return entry.api === "openai-completions" ? `${root}/v1` : root;
 }
 
 /** First positive integer among `candidates`, else undefined. */
@@ -106,9 +130,10 @@ function firstPositive(...candidates: unknown[]): number | undefined {
 }
 
 /**
- * Validate and canonicalize a typed gateway URL.
+ * Validate and canonicalize a typed gateway URL into a gateway root.
  *
- * @throws when the text is not an absolute http(s) URL.
+ * @throws when the text is not an absolute http(s) URL, or carries a query or
+ * fragment that the derived endpoints would silently drop.
  */
 export function normalizeBaseUrl(input: string): string {
 	const trimmed = input.trim().replace(/\/+$/, "");
@@ -121,7 +146,10 @@ export function normalizeBaseUrl(input: string): string {
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 		throw new Error(`unsupported URL scheme "${parsed.protocol}" (expected http or https)`);
 	}
-	return trimmed;
+	if (parsed.search.length > 0 || parsed.hash.length > 0) {
+		throw new Error(`"${trimmed}" must be a plain base URL, without a query string or fragment`);
+	}
+	return gatewayRoot(trimmed);
 }
 
 /**
@@ -219,7 +247,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 		const entries: GatewayEntry[] = [];
 		for (const row of parsed.data.providers ?? []) {
 			const name = row.name.trim().toLowerCase();
-			const baseUrl = row.baseUrl.trim().replace(/\/+$/, "");
+			const baseUrl = gatewayRoot(row.baseUrl);
 			if (!GATEWAY_NAME_PATTERN.test(name) || baseUrl.length === 0) continue;
 			const api = row.api !== undefined && API_KINDS[row.api] === true ? row.api : DEFAULT_API;
 			const apiKey = row.apiKey?.trim();
@@ -232,6 +260,9 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 	const writeEntries = (entries: GatewayEntry[]): void => {
 		mkdirSync(dirname(configFile), { recursive: true });
 		writeFileSync(configFile, `${JSON.stringify({ providers: entries }, null, 2)}\n`, { mode: 0o600 });
+		// `mode` only applies when the file is created; an existing (or
+		// hand-edited) file keeps its own permissions until chmod'ed.
+		chmodSync(configFile, 0o600);
 	};
 
 	/** Read a gateway's chat-model catalog, sorted by id and deduplicated. */
@@ -305,7 +336,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 	 */
 	const registerGateway = (entry: GatewayEntry): void => {
 		pi.registerProvider(entry.name, {
-			baseUrl: entry.baseUrl,
+			baseUrl: providerBaseUrl(entry),
 			api: entry.api,
 			apiKey: entry.apiKey,
 			async fetchDynamicModels(resolvedKey): Promise<readonly ProviderModelConfig[]> {
@@ -315,7 +346,20 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 				if (!resolvedKey) {
 					throw new Error(`no API key stored for gateway "${entry.name}"; add one from /login → "${WIZARD_LABEL}"`);
 				}
-				const models = catalogFor(await listModels(resolvedKey, entry.baseUrl), entry.extraModels);
+				let models: GatewayModel[];
+				try {
+					models = catalogFor(await listModels(resolvedKey, entry.baseUrl), entry.extraModels);
+				} catch (error) {
+					// omp swallows discovery errors, so an unreachable gateway or a
+					// rejected key would otherwise show up only as models quietly
+					// missing from the selector.
+					pi.logger.warn("gateway login: model discovery failed", {
+						gateway: entry.name,
+						endpoint: modelsEndpoint(entry.baseUrl),
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
+				}
 				pi.logger.debug("gateway login: discovered models", {
 					gateway: entry.name,
 					baseUrl: entry.baseUrl,
@@ -348,6 +392,13 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 					}),
 				);
 				const existing = saved.find(entry => entry.name === name);
+				// A name that already belongs to another provider (`anthropic`,
+				// a models.yml block, …) would take over its models and its key
+				// resolution, so only names this plugin owns may be reused. The
+				// terminal login path has no session registry and cannot check.
+				if (existing === undefined && registry?.hasProvider(name) === true) {
+					throw new Error(`"${name}" is already a provider in this omp install; pick another name`);
+				}
 
 				const urlAnswer = await callbacks.onPrompt({
 					message: `Paste the base URL of "${name}"`,

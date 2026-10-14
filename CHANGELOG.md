@@ -4,10 +4,24 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [0.3.0] - 2026-10-14
 
+### Fixed
+
+- `openai-completions` gateways now get the `/v1` that wire requires, and `anthropic-messages` gateways no longer get a doubled `/v1` when the stored URL ends in `/v1`: base URLs are canonicalized to the gateway root and the suffix is added per use.
+- A login name already taken by another provider (a built-in, or a `models.yml` block) is rejected instead of shadowing it.
+- The config file is `chmod`'ed to `0600` on every write, not only when created.
+- Model discovery failures are logged with the gateway name and endpoint before being rethrown; omp otherwise swallows them and the models just go missing.
+- Non-chat ids with no prefix (`tts-1`, `whisper-1`) are filtered out of catalogs.
+
 ### Changed
 
 - **Renamed** the repository, package and plugin to `omp-gateway` (was `omp-gateway-login`). Uninstall the old id once: `omp plugin uninstall omp-gateway-login`, then install `git:https://github.com/magic3007/omp-gateway`.
 - Docs and prompt examples use vendor-neutral gateway names; the config file (`~/.omp/agent/gateways-login.json`) and its format are unchanged.
+- Base URLs with a query string or fragment are rejected at login: the derived endpoints would have dropped them silently.
+
+### Added
+
+- `bun run typecheck` and `bun test` (URL, name and model-id helpers), both run by CI on push and pull request.
+- [SECURITY.md](SECURITY.md): how API keys are stored on disk and how to report a vulnerability privately.
 
 ## [0.2.0] - 2026-10-14
 

@@ -8,7 +8,7 @@
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
-<a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
+<a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
 <a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
 
@@ -22,9 +22,13 @@ One installation fronts **as many gateways as you configure**. You name each one
 
 ## Install
 
+Needs [omp](https://omp.sh) ≥ 18.2.3 (`@oh-my-pi/pi-coding-agent`), the agent that loads this extension.
+
 ```bash
 omp plugin install git:https://github.com/magic3007/omp-gateway
 ```
+
+Install from the git URL, not by bare name: the npm package `omp-gateway` belongs to an unrelated project.
 
 ## Log in
 
@@ -37,7 +41,7 @@ omp login                            # pick "Custom gateway (name + base URL + A
 # → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
 ```
 
-The name, URL and key are validated together with one model-list call before anything is stored, so a wrong key or URL fails the login instead of adding a broken gateway. Repeat the login for each gateway you want — all of them are registered on every start.
+The name, URL and key are validated together with one model-list call before anything is stored, so a wrong key or an unreachable URL fails the login instead of adding a broken gateway. Repeat the login for each gateway you want — all of them are registered on every start. (omp's own line about credentials being stored, or not, refers to its credential store; this plugin keeps the key in its own file.)
 
 ## Enable the models
 
@@ -56,7 +60,7 @@ modelRoles:                             # optional aliases
 Then use them like any other model:
 
 ```bash
-omp models list | grep -E '^litellm '
+omp models list litellm
 omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 ```
 
@@ -65,9 +69,9 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 | Item | Value |
 | --- | --- |
 | Login entry | `/login` (TUI) or `omp login` (terminal) → `Custom gateway (name + base URL + API key)` |
-| Login input | name, base URL, API key, optional extra model ids — all typed by you, **never** read from env vars |
+| Login input | name, base URL, API key, optional extra model ids — all typed by you at login; the plugin reads no environment variables |
 | Model prefix | `<name>/<model id>`, e.g. `litellm/claude-opus-4-1`, `volcengine/ark-code-latest` |
-| Wire | `anthropic-messages` by default, `openai-completions` per gateway in the config file |
+| Wire | `anthropic-messages` by default; set `openai-completions` per gateway in the config file |
 | Model source | `GET <base URL>/v1/models`, re-fetched on login and on discovery refresh |
 | Gateways per install | unlimited — one entry per name in the config file |
 
@@ -97,19 +101,23 @@ Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`, p
 
 Hand-editing works: `extraModels` and `api` are the fields the login flow does not ask about, and the file is re-validated on load.
 
+Base URLs are stored as the gateway root (`https://gw.example.com`, a trailing `/v1` is stripped); the plugin adds `/v1/models` for discovery, and the `/v1` the OpenAI wire needs. After hand-editing, run `omp models refresh` so the cached catalog is re-read.
+
 ## Development
 
 ```bash
 git clone https://github.com/magic3007/omp-gateway
 cd omp-gateway
+bun install              # dev only: TypeScript and the omp host types
 omp plugin link .        # edits in src/ take effect on the next omp start
+bun run typecheck && bun test
 ```
 
-Zero dependencies: the entry point is TypeScript source (`package.json#omp.extensions: ["src/index.ts"]`) loaded directly by omp's Bun runtime. Host types come through `import type` only.
+No runtime dependencies: the entry point is TypeScript source (`package.json#omp.extensions: ["src/index.ts"]`) loaded directly by omp's Bun runtime. Host types come through `import type` only.
 
 Remove: `omp plugin disable omp-gateway` (keep, stop loading) or `omp plugin uninstall omp-gateway`.
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+See [CHANGELOG.md](CHANGELOG.md) for release notes, [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](SECURITY.md) for how API keys are stored.
 
 ## License
 

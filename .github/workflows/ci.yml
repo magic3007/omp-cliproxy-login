@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      # Host types come from @oh-my-pi/pi-coding-agent: the typecheck is what
+      # catches an omp API change before a user's next plugin load does.
+      - run: bun run typecheck
+      - run: bun test

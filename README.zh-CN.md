@@ -8,7 +8,7 @@
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
 <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-gateway?style=flat-square&color=5f43e9" /></a>&nbsp;
-<a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
+<a href="https://omp.sh"><img alt="omp ≥ 18.2.3" src="https://img.shields.io/badge/omp-%E2%89%A518.2.3-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="零依赖" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
 <a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-gateway?style=flat-square" /></a>
 
@@ -22,9 +22,13 @@
 
 ## 安装
 
+需要 [omp](https://omp.sh) ≥ 18.2.3（`@oh-my-pi/pi-coding-agent`），即加载本扩展的 agent。
+
 ```bash
 omp plugin install git:https://github.com/magic3007/omp-gateway
 ```
+
+只能用 git 地址安装，不要用裸包名：npm 上的 `omp-gateway` 是另一个无关项目。
 
 ## 登录
 
@@ -37,7 +41,7 @@ omp login                            # 选 "Custom gateway (name + base URL + AP
 # → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
 ```
 
-名字、地址、Key 会先用一次模型列表请求整体校验再入库；Key 或地址不对就直接登录失败，不会留下坏掉的网关。每个网关重复一次登录即可，插件会在每次启动时注册全部网关。
+名字、地址、Key 会先用一次模型列表请求整体校验再入库；Key 或地址不对就直接登录失败，不会留下坏掉的网关。每个网关重复一次登录即可，插件会在每次启动时注册全部网关。（终端登录末尾那句「是否存了凭证」说的是 omp 自带凭证库；本插件把 Key 存在自己的文件里。）
 
 ## 开启模型
 
@@ -56,7 +60,7 @@ modelRoles:                             # 可选别名
 之后与其他模型用法一致：
 
 ```bash
-omp models list | grep -E '^litellm '
+omp models list litellm
 omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 ```
 
@@ -65,9 +69,9 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 | 项 | 值 |
 | --- | --- |
 | 登录入口 | `/login`（TUI）或 `omp login`（终端）→ `Custom gateway (name + base URL + API key)` |
-| 登录输入 | 名字、网关地址、API Key、可选额外模型 id——全部手动输入，**不**读环境变量 |
+| 登录输入 | 名字、网关地址、API Key、可选额外模型 id——登录时手动输入；插件自身不读任何环境变量 |
 | 模型前缀 | `<名字>/<模型 id>`，如 `litellm/claude-opus-4-1`、`volcengine/ark-code-latest` |
-| 传输 | 默认 `anthropic-messages`，可在配置文件里按网关改成 `openai-completions` |
+| 传输 | 默认 `anthropic-messages`；只支持 OpenAI 的网关在配置文件里改成 `openai-completions` |
 | 模型来源 | `GET <网关地址>/v1/models`，登录与发现刷新时重新拉取 |
 | 网关数量 | 不限，配置文件里每个名字一条 |
 
@@ -97,19 +101,23 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 
 也可以直接手改：`extraModels` 和 `api` 是登录流程不问的两个字段，加载时会重新校验。
 
+地址按「网关根」存储（`https://gw.example.com`，末尾的 `/v1` 会被去掉）：发现时由插件补 `/v1/models`，OpenAI 传输需要的 `/v1` 也由插件补。手改文件后执行 `omp models refresh` 刷新模型缓存。
+
 ## 开发
 
 ```bash
 git clone https://github.com/magic3007/omp-gateway
 cd omp-gateway
+bun install              # 仅开发用：TypeScript 与 omp 宿主类型
 omp plugin link .        # 改 src/ 下次启动 omp 生效
+bun run typecheck && bun test
 ```
 
-零依赖：入口是 TS 源码（`package.json#omp.extensions: ["src/index.ts"]`），由 omp 的 Bun 运行时直接加载；宿主类型只走 `import type`。
+无运行时依赖：入口是 TS 源码（`package.json#omp.extensions: ["src/index.ts"]`），由 omp 的 Bun 运行时直接加载；宿主类型只走 `import type`。
 
 卸载：`omp plugin disable omp-gateway`（停用）或 `omp plugin uninstall omp-gateway`。
 
-发版记录见 [CHANGELOG.md](CHANGELOG.md)；提 PR 前先看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+发版记录见 [CHANGELOG.md](CHANGELOG.md)；提 PR 前先看 [CONTRIBUTING.md](CONTRIBUTING.md)；Key 的存储方式见 [SECURITY.md](SECURITY.md)。
 
 ## 许可
 

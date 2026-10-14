@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, one-api, Volcengine Ark coding plan, …) and expose every chat model it serves",
   "type": "module",
+  "private": true,
   "license": "MIT",
   "author": "magic3007",
   "homepage": "https://github.com/magic3007/omp-gateway#readme",
@@ -30,8 +31,18 @@
     "README.zh-CN.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE"
   ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^18.10.4",
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.3"
+  },
   "omp": {
     "name": "Gateway Login",
     "description": "Adds a '/login' entry that registers any base-URL + API-key model gateway (name, URL, key) and discovers its chat models.",

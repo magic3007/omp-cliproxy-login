@@ -1,2 +1,5 @@
 node_modules/
 *.log
+
+# scratch type dumps from host-API probing
+.probe-*.d.ts
