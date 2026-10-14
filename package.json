@@ -1,6 +1,6 @@
 {
   "name": "omp-model-gateway",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, one-api, Volcengine Ark coding plan, …) and expose every chat model it serves",
   "type": "module",
   "license": "MIT",
