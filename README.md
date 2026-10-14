@@ -7,6 +7,7 @@
 ### Log in to any CLIProxyAPI gateway — type its URL + API key, get every chat model it serves.
 
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f4c430?style=flat-square" /></a>&nbsp;
+<a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/magic3007/omp-cliproxy-login?style=flat-square&color=5f43e9" /></a>&nbsp;
 <a href="https://omp.sh"><img alt="omp ≥ 18" src="https://img.shields.io/badge/omp-%E2%89%A518-5f43e9?style=flat-square" /></a>&nbsp;
 <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/deps-zero-success?style=flat-square" /></a>&nbsp;
 <a href="../../commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/magic3007/omp-cliproxy-login?style=flat-square" /></a>
