@@ -1,10 +1,10 @@
 /**
  * Gateway Login — configure any "base URL + API key" model gateway as an omp provider.
  *
- * CLIProxyAPI is the archetype, not a requirement: anything that answers
- * `GET <base URL>/v1/models` and speaks Anthropic Messages (or OpenAI Chat
- * Completions) works — LiteLLM, one-api, new-api, the Volcengine Ark coding
- * plan, an in-house router.
+ * No vendor is privileged: anything that answers `GET <base URL>/v1/models` and
+ * speaks Anthropic Messages (or OpenAI Chat Completions) works — CLIProxyAPI,
+ * LiteLLM, one-api, new-api, the Volcengine Ark coding plan, an in-house
+ * router.
  *
  * Behaviour:
  * - The `/login` picker carries one entry, {@link WIZARD_LABEL}, that asks for a

@@ -16,7 +16,7 @@
 
 <br>
 
-An [omp](https://omp.sh) ([`@oh-my-pi/pi-coding-agent`](https://github.com/can1357/oh-my-pi), aka oh-my-pi) extension that turns **any** "base URL + API key" gateway into a first-class login provider. CLIProxyAPI is just the archetype: LiteLLM, one-api, new-api, the Volcengine Ark coding plan and in-house routers all work, as long as the endpoint answers `GET <base URL>/v1/models` and speaks Anthropic Messages (or OpenAI Chat Completions).
+An [omp](https://omp.sh) ([`@oh-my-pi/pi-coding-agent`](https://github.com/can1357/oh-my-pi), aka oh-my-pi) extension that turns **any** "base URL + API key" gateway into a first-class login provider — CLIProxyAPI, LiteLLM, one-api, new-api, the Volcengine Ark coding plan, in-house routers — as long as the endpoint answers `GET <base URL>/v1/models` and speaks Anthropic Messages (or OpenAI Chat Completions).
 
 One installation fronts **as many gateways as you configure**. You name each one during login, and that name is the model prefix.
 

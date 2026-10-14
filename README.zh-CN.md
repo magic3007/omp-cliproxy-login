@@ -16,7 +16,7 @@
 
 <br>
 
-一个 [omp](https://omp.sh)（[`@oh-my-pi/pi-coding-agent`](https://github.com/can1357/oh-my-pi)，即 oh-my-pi）扩展：把**任意**「base URL + API Key」网关变成一等登录 provider。CLIProxyAPI 只是这类网关的典型代表——LiteLLM、one-api、new-api、火山引擎方舟 coding plan、自建路由，只要它响应 `GET <base URL>/v1/models` 且支持 Anthropic Messages（或 OpenAI Chat Completions），就能接。
+一个 [omp](https://omp.sh)（[`@oh-my-pi/pi-coding-agent`](https://github.com/can1357/oh-my-pi)，即 oh-my-pi）扩展：把**任意**「base URL + API Key」网关变成一等登录 provider——CLIProxyAPI、LiteLLM、one-api、new-api、火山引擎方舟 coding plan、自建路由都可以，只要它响应 `GET <base URL>/v1/models` 且支持 Anthropic Messages（或 OpenAI Chat Completions）。
 
 一份安装可以同时挂**任意多个网关**：登录时你给它起名字，这个名字就是模型前缀。
 
