@@ -32,6 +32,8 @@ omp plugin install omp-model-gateway
 
 Also installable straight from git: `omp plugin install github:magic3007/omp-model-gateway`. Do not shorten the npm name — the package `omp-gateway` is an unrelated project.
 
+Coming from the earlier `omp-gateway` id? Move once — `omp plugin uninstall omp-gateway`, then install as above. Nothing else changes: the config file and its gateway entries stay where they are.
+
 ## Log in
 
 ```bash

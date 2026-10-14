@@ -32,6 +32,8 @@ omp plugin install omp-model-gateway
 
 也可以直接从 git 安装：`omp plugin install github:magic3007/omp-model-gateway`。不要省略 npm 包名里的 `model`——`omp-gateway` 是另一个无关项目。
 
+从早先的 `omp-gateway` id 过来？迁移一次即可：先 `omp plugin uninstall omp-gateway`，再按上面的命令安装。其他都不用动：配置文件和其中的网关条目原地保留。
+
 ## 登录
 
 ```bash
