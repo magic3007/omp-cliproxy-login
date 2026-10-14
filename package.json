@@ -1,17 +1,17 @@
 {
-  "name": "omp-cliproxy-login",
-  "version": "0.1.0",
-  "description": "omp extension: log in to any CLIProxyAPI gateway with its URL + API key and expose every chat model it serves",
+  "name": "omp-gateway-login",
+  "version": "0.2.0",
+  "description": "omp extension: log in to any base-URL + API-key model gateway (CLIProxyAPI, LiteLLM, Ark coding plan, …) and expose every chat model it serves",
   "type": "module",
   "license": "MIT",
   "author": "magic3007",
-  "homepage": "https://github.com/magic3007/omp-cliproxy-login#readme",
+  "homepage": "https://github.com/magic3007/omp-gateway-login#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/magic3007/omp-cliproxy-login.git"
+    "url": "git+https://github.com/magic3007/omp-gateway-login.git"
   },
   "bugs": {
-    "url": "https://github.com/magic3007/omp-cliproxy-login/issues"
+    "url": "https://github.com/magic3007/omp-gateway-login/issues"
   },
   "keywords": [
     "omp",
@@ -33,8 +33,8 @@
     "LICENSE"
   ],
   "omp": {
-    "name": "CLIProxy Login",
-    "description": "Adds a '/login' entry that authenticates a CLIProxyAPI gateway from a typed URL + API key and discovers its models.",
+    "name": "Gateway Login",
+    "description": "Adds a '/login' entry that registers any base-URL + API-key model gateway (name, URL, key) and discovers its chat models.",
     "extensions": [
       "src/index.ts"
     ]
