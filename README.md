@@ -1,72 +1,89 @@
-# omp-kafara-login
+<div align="center">
 
-给 omp 增加一个「粘贴 API Key 即可登录」的 provider，登录后自动发现网关下**全部聊天模型**。
+**English** · [简体中文](README.zh-CN.md)
 
-适用对象：CLIProxyAPI 一类的聚合网关（本插件默认指向 `https://ai.kafara.men`，与 `management.html` 同一实例）。
+</div>
 
-## 效果
+# omp-cliproxy-login
 
-| 项 | 值 |
-|---|---|
-| 登录入口 | `/login`（TUI）或 `omp login`（终端），列表里出现 `Kafara Gateway (API key)` |
-| 凭证来源 | 登录时由用户手动粘贴，**不读环境变量**、不读配置文件 |
-| 模型前缀 | `kafara/<网关模型 id>`，如 `kafara/devin/claude-opus-4-7`、`kafara/grok-4.7` |
-| 传输 | `anthropic-messages`（`POST /v1/messages`），baseUrl `https://ai.kafara.men/v1` |
-| 模型来源 | 每次登录/刷新时拉 `GET /v1/models`（动态发现） |
+An [omp](https://github.com/oh-my-pi/oh-my-pi) extension that adds a **login entry for any CLIProxyAPI gateway**: type the gateway URL and an API key, and every chat model that key can reach appears in omp.
 
-登录流程：选 provider → 粘贴 key → 插件立刻用该 key 拉一次 `/v1/models` 校验。key 无效直接报 `the gateway rejected this API key (HTTP 401)`，不会写进凭证库。
+Works with any CLIProxyAPI deployment (the ones that ship a `management.html` panel).
 
-## 安装
+## What you get
 
-```bash
-omp plugin install git:https://github.com/<you>/omp-kafara-login
-omp plugin doctor          # 条目应为 ok
+| Item | Value |
+| --- | --- |
+| Login entry | `/login` (TUI) or `omp login` (terminal) → `CLIProxyAPI Gateway (API key)` |
+| Login input | ① gateway URL (e.g. `https://your-cliproxy.example.com`) ② API key |
+| Credential source | typed by you at login; **never** read from environment variables or config files |
+| Model prefix | `cliproxy/<gateway model id>`, e.g. `cliproxy/devin/claude-opus-4-7`, `cliproxy/grok-4.7` |
+| Wire | `anthropic-messages` (`POST /v1/messages`) |
+| Model source | `GET <gateway>/v1/models`, re-fetched on login and discovery refresh |
+
+Login flow: pick the provider → type the gateway URL → type the API key → the extension immediately validates the pair with one `/v1/models` call. A bad input fails the login and stores nothing:
+
+- Bad URL: `"xxx" is not an absolute URL (...)`
+- Bad key: `the gateway rejected this API key (HTTP 401)`
+
+The URL is remembered in `~/.omp/agent/cliproxy-login.json`, so the next login prefills it (press Enter to keep it):
+
+```json
+{ "baseUrl": "https://your-cliproxy.example.com" }
 ```
 
-本地开发用软链：
+## Install
+
+```bash
+omp plugin install git:https://github.com/magic3007/omp-cliproxy-login
+omp plugin doctor          # the entry should be ok
+```
+
+Local development (edits take effect immediately):
 
 ```bash
 cd <repo>
 omp plugin link .
 ```
 
-卸载：`omp plugin disable omp-kafara-login`（停用）或 `omp plugin uninstall omp-kafara-login`。
+Remove: `omp plugin disable omp-cliproxy-login`, or `omp plugin uninstall omp-cliproxy-login`.
 
-## 使用
+## Use
 
 ```bash
-omp login                  # 交互选择；或 omp login kafara
-# 粘贴 sk-… 后：
-omp models list | grep '^kafara'   # 应看到该网关的聊天模型
-omp -p --model kafara/devin/claude-opus-4-7 "reply with exactly: OK"
+omp login                  # pick interactively, or: omp login cliproxy
+# type the gateway URL, then the sk-… key
+omp models list | grep '^cliproxy'                 # the gateway's chat models
+omp -p --model cliproxy/devin/claude-opus-4-7 "reply with exactly: OK"
 ```
 
-TUI 内用 `/login`、`/logout` 同样入口。
+Inside the TUI, `/login` and `/logout` are the same entry points.
 
-## 必需的一步：白名单
+## Required: allow-list
 
-omp 的 `enabledModels` 是**严格白名单**；不在其中时模型已登录也选不到。在 `~/.omp/agent/config.yml` 加：
+omp's `enabledModels` is a **strict allow-list**; a logged-in model is still unselectable while it is missing from it. Add to `~/.omp/agent/config.yml`:
 
 ```yaml
 enabledModels:
-  - kafara/*        # 或逐个写 kafara/devin/claude-opus-4-7 …
+  - cliproxy/*        # or list each cliproxy/devin/claude-opus-4-7 … individually
 ```
 
-`modelRoles` 里加别名（可选）：
+Optional role alias:
 
 ```yaml
 modelRoles:
-  kafara-opus: kafara/devin/claude-opus-4-7:auto
+  cliproxy-opus: cliproxy/devin/claude-opus-4-7:auto
 ```
 
-## 行为细节
+## Behaviour notes
 
-- **非聊天模型被过滤**：网关的 `/v1/models` 里混着 `gpt-image-*`、`grok-imagine-*`、`grok-tts`、`gemini-*-image` 等图像/视频/语音条目，插件按 id 关键字剔除（见 `src/index.ts` 的 `NON_CHAT_MODEL`），只注册聊天模型。
-- **元数据兜底**：`/v1/models` 不返回上下文/输出上限，插件统一按 200k / 64k 注册，并按 `reasoning: true`、`input: [text, image]` 注册。
-- **未登录时该 provider 无模型**：没 key 就不列模型，避免出现必失败的选项。
-- **改默认网关**：把 `src/index.ts` 的 `BASE_URL` 换成自己的网关根地址（带不带 `/v1` 都行）。
+- **Non-chat models are filtered out.** Gateways list image, video and speech models (`gpt-image-*`, `grok-imagine-*`, `grok-tts`, `gemini-*-image`, …) next to the chat ones; the extension drops them by id keyword (`NON_CHAT_MODEL` in `src/index.ts`) so the picker only holds usable chat models.
+- **Metadata defaults.** `/v1/models` reports no context or output limits, so every model is registered with 200k / 64k, `reasoning: true`, `input: [text, image]`.
+- **No models while logged out.** Discovery fails loudly instead of reporting an empty catalog — an empty "success" would be cached as authoritative and hide the models unlocked by a later login.
+- **Switching gateways.** Type a new URL in the next `/login`; the provider is re-registered immediately, no restart needed.
+- **One gateway per install.** To run two gateways, install the repo twice with different `PROVIDER_ID`s, or declare the second one in `~/.omp/agent/models.yml`.
 
-## 实现约束
+## Implementation notes
 
-- 包内零依赖，扩展入口是 TS 源码（`package.json#omp.extensions`），由 omp 的 Bun 运行时直接加载。
-- 只用 `import type` 引用宿主类型，运行时不解析任何宿主包。
+- Zero dependencies; the entry point is TypeScript source (`package.json#omp.extensions`) loaded directly by omp's Bun runtime.
+- Host types are imported with `import type` only; at runtime the extension uses just `getAgentDir()` from the injected `pi.pi`.
