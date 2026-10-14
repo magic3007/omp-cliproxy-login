@@ -27,6 +27,15 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: npm publish --provenance
+      # A hand-published version makes the tag a no-op rather than a red run:
+      # the tag still records the release, and CI still ran the checks.
+      - name: Publish to npm
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "omp-model-gateway@$version" version >/dev/null 2>&1; then
+            echo "omp-model-gateway@$version is already on npm — nothing to publish"
+          else
+            npm publish --provenance
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
