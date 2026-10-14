@@ -58,7 +58,7 @@ export interface GatewayModel {
 
 /** Persisted plugin configuration. */
 export interface GatewayConfig {
-	/** Gateway root, e.g. `https://ai.kafara.men`; a trailing `/v1` is accepted too. */
+	/** Gateway root, e.g. `https://cliproxy.example.com`; a trailing `/v1` is accepted too. */
 	baseUrl: string;
 }
 
