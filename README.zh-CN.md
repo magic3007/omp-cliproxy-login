@@ -36,12 +36,12 @@ omp plugin install git:https://github.com/magic3007/omp-gateway
 omp login                            # 选 "Custom gateway (name + base URL + API key)"
                                      #   ① 名字     如 litellm
                                      #   ② 网关地址 如 https://gw.example.com
-                                     #   ③ API Key  sk-…
+                                     #   ③ key      KAFARA_API_KEY，或 sk-…，或 !pass show gw
                                      #   ④ 额外模型 id（回车跳过）
-# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
+# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>. Key stored as the reference LITELLM_API_KEY.
 ```
 
-名字、地址、Key 会先用一次模型列表请求整体校验再入库；Key 或地址不对就直接登录失败，不会留下坏掉的网关。每个网关重复一次登录即可，插件会在每次启动时注册全部网关。（终端登录末尾那句「是否存了凭证」说的是 omp 自带凭证库；本插件把 Key 存在自己的文件里。）
+名字、地址、key 会先用一次模型列表请求整体校验再入库；key 或地址不对就直接登录失败，不会留下坏掉的网关。每个网关重复一次登录即可，插件会在每次启动时注册全部网关。**写进配置文件的是你输入的那个引用（reference），不是密钥本身**（见[Key 引用](#key-引用)）。（终端登录末尾那句「是否存了凭证」说的是 omp 自带凭证库；本插件把引用存在自己的文件里，由 omp 去解析。）
 
 ## 开启模型
 
@@ -69,7 +69,7 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 | 项 | 值 |
 | --- | --- |
 | 登录入口 | `/login`（TUI）或 `omp login`（终端）→ `Custom gateway (name + base URL + API key)` |
-| 登录输入 | 名字、网关地址、API Key、可选额外模型 id——登录时手动输入；插件自身不读任何环境变量 |
+| 登录输入 | 名字、网关地址、key **或 key 引用**（环境变量名、`!命令`、字面量）、可选额外模型 id |
 | 模型前缀 | `<名字>/<模型 id>`，如 `litellm/claude-opus-4-1`、`volcengine/ark-code-latest` |
 | 传输 | 默认 `anthropic-messages`；只支持 OpenAI 的网关在配置文件里改成 `openai-completions` |
 | 模型来源 | `GET <网关地址>/v1/models`，登录与发现刷新时重新拉取 |
@@ -79,25 +79,39 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 
 ## 管理网关
 
-所有内容在一个 JSON 文件里：`~/.omp/agent/gateways-login.json`（`0600`，Key 为明文，与 omp 自带凭证库同等级）：
+所有内容在一个 JSON 文件里：`~/.omp/agent/gateways-login.json`（`0600`）：
 
 ```json
 {
   "providers": [
     { "name": "litellm", "baseUrl": "https://gw.example.com", "api": "anthropic-messages",
-      "apiKey": "sk-…", "extraModels": [] },
+      "apiKey": "LITELLM_API_KEY", "extraModels": [] },
     { "name": "volcengine", "baseUrl": "https://ark.cn-beijing.volces.com/api/coding",
-      "api": "anthropic-messages", "apiKey": "…",
+      "api": "anthropic-messages", "apiKey": "VE_CODE_API_KEY",
       "extraModels": ["ark-code-latest", "doubao-seed-2.0-pro", "glm-5.3"] }
   ]
 }
 ```
 
 - **新增**：再跑一次登录入口，换个新名字。
-- **修改**：用已有名字再跑一次；地址和 Key 直接回车沿用，额外 id 输入 `-` 清空。
+- **修改**：用已有名字再跑一次；地址和 key 引用直接回车沿用，额外 id 输入 `-` 清空。
 - **删除**：从文件里删掉该对象并重启 omp。
 - **`extraModels`**：网关实际提供但 `/v1/models` 不列的模型 id（套餐专属别名，如方舟 coding plan 的 `ark-code-latest`）。
 - **`api`**：只支持 OpenAI Chat Completions 的网关改成 `openai-completions`。
+
+### Key 引用
+
+`apiKey` 是**引用**而非一定是密钥：omp 在每次用到 key 时按自己的规则解析（`resolveConfigValue`，与 `models.yml` 同一套）。
+
+| 写法 | omp 实际使用 | 适用场景 |
+| --- | --- | --- |
+| `KAFARA_API_KEY` | 该环境变量的值 | 常规做法——密钥只留在 shell 环境里 |
+| `!gpg -q -d ~/.omp/keys/kafara.gpg` | 该命令 stdout（去掉首尾空白） | 密钥放加密文件、`pass show …`、`op read …`、钥匙串查询 |
+| `sk-…` | 字面量本身 | 临时试用；此时文件里就是密钥 |
+
+所以这个文件可以放心进 dotfiles 仓库：它只记录密钥从哪来，不必包含密钥。登录入口同样只写引用——你粘贴的明文 key 如果已存在于某个环境变量里，它会改存那个变量名，并在输出里说明。完整的安全说明见 [SECURITY.md](SECURITY.md)。
+
+环境变量形式有两点要注意：变量必须在**启动 omp 的那个 shell** 里 export；没设置的名字会按 omp 规则当字面量发出去，表现为 401。命令形式的输出会缓存，交互式的 `gpg`/`op` 提示每会话只出现一次。
 
 也可以直接手改：`extraModels` 和 `api` 是登录流程不问的两个字段，加载时会重新校验。
 

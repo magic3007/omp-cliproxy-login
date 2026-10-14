@@ -2,11 +2,22 @@
 
 ## How this plugin handles your API keys
 
-- Keys are typed at login and written to `~/.omp/agent/gateways-login.json`, created and kept at mode `0600` (owner read/write only).
-- They are stored **in plaintext**, like omp's own credential store. Anyone who can read your home directory can read them.
-- The plugin reads no environment variables and sends keys nowhere except to the gateway base URL you entered, as `Authorization: Bearer <key>` and `x-api-key: <key>`.
+A gateway's `apiKey` in `~/.omp/agent/gateways-login.json` is a **key reference**, not necessarily a key. omp resolves it with its own config-value rules (`resolveConfigValue`), the same ones `models.yml` uses:
+
+| Reference | Example | Where the secret lives |
+| --- | --- | --- |
+| Environment variable name | `KAFARA_API_KEY` | your shell environment (`~/.common_shell_setup_local.sh`, a keychain export, …) |
+| Command | `!gpg -q -d ~/.omp/keys/kafara.gpg` | stdout of the command — an encrypted file, `pass`, `op read`, a keychain lookup |
+| Literal key | `sk-…` | the config file itself, in plaintext |
+
+So the config file can be tracked in a dotfiles repository: write a reference and the file carries no secret. The plugin itself reads no environment variables and sends keys nowhere except to the gateway base URL you entered, as `Authorization: Bearer <key>` and `x-api-key: <key>`.
+
+- The login entry asks for the key **or a reference to one**, resolves it, and validates it against the gateway before storing anything.
+- A pasted literal key that an environment variable already holds is stored as that variable's name; the login output says which one. A literal that nothing holds is stored as typed, and the login output says so — the plugin never puts a secret in the file silently.
+- The file is created and kept at mode `0600`. If you store literal keys, that mode is the only protection: anyone who can read your home directory can read them.
+- An environment variable name that nothing sets is used as the literal key, as it is for omp. Prefer `!command` if you want a missing secret to fail loudly.
 - Keys are never written to logs. Log lines carry the gateway name, its base URL and model counts only.
-- Deleting a gateway's object from the config file removes its key. There is no second copy in omp's credential store.
+- Deleting a gateway's object from the config file removes its reference. There is no second copy in omp's credential store.
 
 ## Reporting a vulnerability
 

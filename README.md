@@ -36,12 +36,12 @@ Install from the git URL, not by bare name: the npm package `omp-gateway` belong
 omp login                            # pick "Custom gateway (name + base URL + API key)"
                                      #   ① name        e.g. litellm
                                      #   ② base URL    e.g. https://gw.example.com
-                                     #   ③ API key     sk-…
+                                     #   ③ key         KAFARA_API_KEY, or sk-…, or !pass show gw
                                      #   ④ extra ids   Enter for none
-# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>.
+# → Saved gateway "litellm" (48 chat models) … select them as litellm/<id>. Key stored as the reference LITELLM_API_KEY.
 ```
 
-The name, URL and key are validated together with one model-list call before anything is stored, so a wrong key or an unreachable URL fails the login instead of adding a broken gateway. Repeat the login for each gateway you want — all of them are registered on every start. (omp's own line about credentials being stored, or not, refers to its credential store; this plugin keeps the key in its own file.)
+The name, URL and key are validated together with one model-list call before anything is stored, so a wrong key or an unreachable URL fails the login instead of adding a broken gateway. Repeat the login for each gateway you want — all of them are registered on every start. What lands in the config file is the reference you typed, not the secret ([Key references](#key-references)). (omp's own line about credentials being stored, or not, refers to its credential store; this plugin keeps the reference in its own file and lets omp resolve it.)
 
 ## Enable the models
 
@@ -69,7 +69,7 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 | Item | Value |
 | --- | --- |
 | Login entry | `/login` (TUI) or `omp login` (terminal) → `Custom gateway (name + base URL + API key)` |
-| Login input | name, base URL, API key, optional extra model ids — all typed by you at login; the plugin reads no environment variables |
+| Login input | name, base URL, a key **or a key reference** (environment variable name, `!command`, literal), optional extra model ids |
 | Model prefix | `<name>/<model id>`, e.g. `litellm/claude-opus-4-1`, `volcengine/ark-code-latest` |
 | Wire | `anthropic-messages` by default; set `openai-completions` per gateway in the config file |
 | Model source | `GET <base URL>/v1/models`, re-fetched on login and on discovery refresh |
@@ -79,25 +79,39 @@ Discovery drops what is not a usable chat model (image/video/speech ids, entries
 
 ## Managing gateways
 
-Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`, plaintext keys — same posture as omp's own credential store):
+Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`):
 
 ```json
 {
   "providers": [
     { "name": "litellm", "baseUrl": "https://gw.example.com", "api": "anthropic-messages",
-      "apiKey": "sk-…", "extraModels": [] },
+      "apiKey": "LITELLM_API_KEY", "extraModels": [] },
     { "name": "volcengine", "baseUrl": "https://ark.cn-beijing.volces.com/api/coding",
-      "api": "anthropic-messages", "apiKey": "…",
+      "api": "anthropic-messages", "apiKey": "VE_CODE_API_KEY",
       "extraModels": ["ark-code-latest", "doubao-seed-2.0-pro", "glm-5.3"] }
   ]
 }
 ```
 
 - **Add** — run the login entry again with a new name.
-- **Update** — run it with an existing name: Enter keeps the stored URL and key, `-` clears the extra ids.
+- **Update** — run it with an existing name: Enter keeps the stored URL and key reference, `-` clears the extra ids.
 - **Remove** — delete its object from the file and restart omp.
 - **`extraModels`** — model ids the gateway serves but does not list (plan-only aliases, e.g. the Ark coding plan's `ark-code-latest`).
 - **`api`** — set `openai-completions` for gateways that only speak OpenAI Chat Completions.
+
+### Key references
+
+`apiKey` is a **reference**, not necessarily a key: omp resolves it every time the key is used, with the same rules it applies to `models.yml` (`resolveConfigValue`).
+
+| You write | omp sends | Use it for |
+| --- | --- | --- |
+| `KAFARA_API_KEY` | that environment variable | the usual case — the secret stays in your shell environment |
+| `!gpg -q -d ~/.omp/keys/kafara.gpg` | the command's stdout, trimmed | secrets in an encrypted file, `pass show …`, `op read …`, a keychain lookup |
+| `sk-…` | the text itself | quick trials; the file then holds the secret |
+
+So the file is safe to track in a dotfiles repository: it names where the key comes from, and never has to contain it. The login entry writes a reference too — paste a key that some environment variable already holds and it stores that variable's name instead, saying so in its output. See [SECURITY.md](SECURITY.md) for the full posture.
+
+Two things to know about the environment form: the variable must be exported in the shell that starts omp, and a name nothing sets is sent as the literal key (omp's rule), which surfaces as a 401. Command output is cached, so an interactive `gpg` or `op` prompt happens once per session.
 
 Hand-editing works: `extraModels` and `api` are the fields the login flow does not ask about, and the file is re-validated on load.
 

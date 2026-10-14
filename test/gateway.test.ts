@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
+	classifyKeyReference,
 	DEFAULT_API,
 	modelsEndpoint,
 	normalizeBaseUrl,
 	normalizeGatewayName,
 	parseModelIds,
 	providerBaseUrl,
+	referenceToStore,
 	WIZARD_ID,
 } from "../src/index.ts";
 
@@ -75,5 +77,46 @@ describe("parseModelIds", () => {
 	test("splits on commas and whitespace, dropping blanks and duplicates", () => {
 		expect(parseModelIds("a, b  c,,  a")).toEqual(["a", "b", "c"]);
 		expect(parseModelIds("   ")).toEqual([]);
+	});
+});
+
+describe("classifyKeyReference", () => {
+	// The three cases omp's own resolveConfigValue distinguishes, so a value
+	// written here behaves the same way it would in models.yml.
+	test("reads an exact environment variable name", () => {
+		expect(classifyKeyReference("KAFARA_API_KEY", { KAFARA_API_KEY: "sk-1" })).toEqual({
+			kind: "env",
+			name: "KAFARA_API_KEY",
+		});
+	});
+
+	test("falls back to a literal for a name nothing sets", () => {
+		expect(classifyKeyReference("KAFARA_API_KEY", {})).toEqual({ kind: "literal", key: "KAFARA_API_KEY" });
+	});
+
+	test("runs a !command reference", () => {
+		expect(classifyKeyReference("!  gpg -q -d keys.gpg", {})).toEqual({
+			kind: "command",
+			command: "gpg -q -d keys.gpg",
+		});
+	});
+
+	test("keeps a pasted key as a literal", () => {
+		expect(classifyKeyReference("sk-abc", { KAFARA_API_KEY: "sk-abc" })).toEqual({ kind: "literal", key: "sk-abc" });
+	});
+});
+
+describe("referenceToStore", () => {
+	test("stores a pasted key as the environment variable already holding it", () => {
+		expect(referenceToStore("sk-abc", "sk-abc", { KAFARA_API_KEY: "sk-abc" })).toBe("KAFARA_API_KEY");
+	});
+
+	test("stores a reference as typed", () => {
+		expect(referenceToStore("KAFARA_API_KEY", "sk-abc", { KAFARA_API_KEY: "sk-abc" })).toBe("KAFARA_API_KEY");
+		expect(referenceToStore("!pass show gw", "sk-abc", {})).toBe("!pass show gw");
+	});
+
+	test("stores a pasted key nothing holds as typed", () => {
+		expect(referenceToStore("sk-abc", "sk-abc", { OTHER_API_KEY: "sk-xyz" })).toBe("sk-abc");
 	});
 });

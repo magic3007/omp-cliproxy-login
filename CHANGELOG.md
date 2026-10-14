@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-14
+
+A gateway's key is now a **reference**, so the config file can be tracked in a dotfiles repository.
+
+### Added
+
+- `apiKey` is a **key reference**, resolved by omp exactly like every other config value (`resolveConfigValue`): an environment variable name (`KAFARA_API_KEY`), a `!command` whose stdout is the key (`!gpg -q -d ~/.omp/keys/kafara.gpg`), or a literal key. The file can name where the secret comes from instead of holding it.
+- The login entry accepts a reference as well as a key, resolves it before the model-list probe, and reports how the key was stored.
+- `classifyKeyReference` and `referenceToStore` (exported, with tests): the reference forms, and the rule for what to write when a key is pasted.
+
+### Changed
+
+- A pasted literal key that an environment variable already holds is stored as that variable's name, and the login output says which one. A literal nothing holds is stored as typed and the login output says so — a secret never reaches the file silently.
+- [SECURITY.md](SECURITY.md) documents the three reference forms and what each one protects, instead of the plaintext-keys-only posture.
+
 ## [0.3.0] - 2026-10-14
 
 ### Fixed
@@ -60,6 +75,7 @@ First release.
 
 - Discovery no longer reports an empty catalog while logged out. That empty success was cached as authoritative and hid the models a later login unlocked until the cache TTL expired.
 
+[0.4.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.4.0
 [0.3.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.3.0
 [0.2.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.2.0
 [0.1.0]: https://github.com/magic3007/omp-gateway/releases/tag/v0.1.0

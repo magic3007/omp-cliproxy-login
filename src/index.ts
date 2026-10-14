@@ -8,14 +8,19 @@
  *
  * Behaviour:
  * - The `/login` picker carries one entry, {@link WIZARD_LABEL}, that asks for a
- *   **name**, a **base URL**, an **API key** and optional **extra model ids**,
- *   validates them with one model-list call, then stores the gateway and
+ *   **name**, a **base URL**, a **key reference** and optional **extra model
+ *   ids**, validates them with one model-list call, then stores the gateway and
  *   registers `<name>` as a provider.
  * - Every stored gateway is registered at load, so one installation fronts as
  *   many gateways as the config file lists (`litellm`, `volcengine`, …),
  *   each reachable as `<name>/<model id>`.
- * - Nothing is read from environment variables: everything comes from the login
- *   prompts and lives in the plugin's own config file (mode 0600).
+ * - A gateway's `apiKey` is a **key reference**, resolved by omp exactly like
+ *   every other config value (`resolveConfigValue`): `!command` runs and yields
+ *   its stdout, an exact environment variable name yields that variable, and
+ *   anything else is the literal key. So the config file can be tracked in a
+ *   dotfiles repository: it names `KAFARA_API_KEY`, or `!gpg -q -d keys.gpg`,
+ *   and the secret stays in the environment or in an encrypted store.
+ *   See `SECURITY.md`.
  */
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -44,6 +49,12 @@ const GATEWAY_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,62}$/;
 
 /** Answer to the extra-models prompt that clears a stored list. */
 const CLEAR_EXTRAS = "-";
+
+/** Prefix of a command key reference: `!cmd` runs `cmd` and takes its stdout. */
+const COMMAND_PREFIX = "!";
+
+/** An exact environment variable name (`$envExact`), e.g. `KAFARA_API_KEY`. */
+const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** Fallback context window for models the gateway does not report one for. */
 const DEFAULT_CONTEXT_WINDOW = 200_000;
@@ -75,7 +86,12 @@ export interface GatewayEntry {
 	baseUrl: string;
 	/** `anthropic-messages` (default) or `openai-completions`. */
 	api: string;
-	/** Key typed at login. Absent when the entry was hand-written without one. */
+	/**
+	 * Key reference: an exact environment variable name, a `!command` whose
+	 * stdout is the key, or a literal key. Resolved by omp when the key is used
+	 * ({@link resolveKey} repeats it for the login probe). Absent when the entry
+	 * was hand-written without one.
+	 */
 	apiKey?: string;
 	/** Model ids the gateway serves but does not list (aliases, plan-only names). */
 	extraModels: string[];
@@ -173,6 +189,51 @@ export function parseModelIds(input: string): string[] {
 	return [...new Set(input.split(/[\s,]+/).filter(id => id.length > 0))];
 }
 
+/** Environment a key reference is resolved against; injectable so tests need no real environment. */
+type Env = Record<string, string | undefined>;
+
+/**
+ * What a stored key reference names, without touching the environment — the
+ * same three cases omp's own config-value resolver (`resolveConfigValue`)
+ * distinguishes, so a value written here behaves identically in `models.yml`:
+ * `!command` to run, an exact environment variable name to read, or the literal
+ * key. A name nothing sets is a literal, as it is for omp.
+ */
+export function classifyKeyReference(
+	reference: string,
+	env: Env = process.env,
+): { kind: "command"; command: string } | { kind: "env"; name: string } | { kind: "literal"; key: string } {
+	if (reference.startsWith(COMMAND_PREFIX)) return { kind: "command", command: reference.slice(1).trim() };
+	return env[reference] === undefined ? { kind: "literal", key: reference } : { kind: "env", name: reference };
+}
+
+/**
+ * The reference to store for a key the user just supplied. A literal key that an
+ * environment variable already holds is stored as that variable's name, so a
+ * config file tracked in a dotfiles repository carries no secret; a reference,
+ * or a literal nothing holds, is stored as typed.
+ */
+export function referenceToStore(typed: string, key: string, env: Env = process.env): string {
+	if (classifyKeyReference(typed, env).kind !== "literal") return typed;
+	for (const [name, value] of Object.entries(env)) {
+		if (value === key) return name;
+	}
+	return typed;
+}
+
+/**
+ * One sentence on how the key ended up stored, so that a literal secret — or a
+ * variable name nothing sets, which omp then sends as the key itself — is never
+ * written silently.
+ */
+function keyStorageNote(stored: string, typed: string, env: Env = process.env): string {
+	if (stored !== typed) return ` Key stored as the reference ${stored} — that environment variable already holds it.`;
+	if (stored.startsWith(COMMAND_PREFIX)) return ` Key stored as the command reference ${stored}.`;
+	if (env[stored] !== undefined) return ` Key stored as the reference ${stored}.`;
+	if (ENV_NAME_PATTERN.test(stored)) return ` Nothing sets ${stored}, so omp sends that name itself as the key.`;
+	return ` The config file now holds the key itself; name an environment variable, or use "${COMMAND_PREFIX}command", to keep it out.`;
+}
+
 export default function gatewayLogin(pi: ExtensionAPI): void {
 	const z = pi.zod;
 	const configFile = join(pi.pi.getAgentDir(), CONFIG_FILENAME);
@@ -265,6 +326,28 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 		chmodSync(configFile, 0o600);
 	};
 
+	/**
+	 * Materialize a key reference with the rules omp applies to every config
+	 * value: `!command` runs and yields its stdout, an exact environment variable
+	 * name yields that variable, anything else is the literal key. omp resolves
+	 * the stored reference again for every request; the plugin repeats the rules
+	 * only where it needs the key material itself — the login probe.
+	 *
+	 * @returns the key, or undefined when a command reference printed nothing.
+	 */
+	const resolveKey = async (reference: string): Promise<string | undefined> => {
+		const classified = classifyKeyReference(reference);
+		if (classified.kind !== "command") {
+			return classified.kind === "env" ? process.env[classified.name] : classified.key;
+		}
+		const windows = process.platform === "win32";
+		const { stdout, code } = await pi.exec(windows ? "cmd" : "/bin/sh", [windows ? "/c" : "-c", classified.command], {
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+		const value = stdout.trim();
+		return code === 0 && value.length > 0 ? value : undefined;
+	};
+
 	/** Read a gateway's chat-model catalog, sorted by id and deduplicated. */
 	const listModels = async (apiKey: string, baseUrl: string): Promise<GatewayModel[]> => {
 		const response = await fetch(modelsEndpoint(baseUrl), {
@@ -344,7 +427,9 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 				// cached as an authoritative "this gateway serves nothing" result,
 				// which then suppresses discovery until the cache TTL expires.
 				if (!resolvedKey) {
-					throw new Error(`no API key stored for gateway "${entry.name}"; add one from /login → "${WIZARD_LABEL}"`);
+					throw new Error(
+						`no key for gateway "${entry.name}": its stored reference resolves to nothing; set one from /login → "${WIZARD_LABEL}"`,
+					);
 				}
 				let models: GatewayModel[];
 				try {
@@ -411,17 +496,32 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 				}
 				const baseUrl = normalizeBaseUrl(typedUrl.length > 0 ? typedUrl : (existing?.baseUrl ?? ""));
 
-				const keyAnswer = await callbacks.onPrompt({
-					message:
-						existing?.apiKey === undefined
-							? `Paste the API key "${name}" serves`
-							: `Paste a new API key for "${name}" (Enter keeps the stored one)`,
-					placeholder: "sk-…",
-					secret: true,
-					allowEmpty: existing?.apiKey !== undefined,
-				});
-				const apiKey = keyAnswer.trim().length > 0 ? keyAnswer.trim() : (existing?.apiKey ?? "");
-				if (apiKey.length === 0) throw new Error(`an API key is required for "${name}"`);
+				// A stored literal key is never echoed back to the terminal: the
+				// prompt names the stored value only when it is a reference.
+				const storedReference = existing?.apiKey;
+				const keeps =
+					storedReference === undefined
+						? ""
+						: classifyKeyReference(storedReference).kind === "literal"
+							? " (Enter keeps the stored key)"
+							: ` (Enter keeps ${storedReference})`;
+				const keyAnswer = (
+					await callbacks.onPrompt({
+						message:
+							storedReference === undefined
+								? `Paste the API key "${name}" serves, or a reference to one (an environment variable name, or !command)`
+								: `Paste a new key or key reference for "${name}"${keeps}`,
+						placeholder: "KAFARA_API_KEY",
+						secret: true,
+						allowEmpty: storedReference !== undefined,
+					})
+				).trim();
+				const reference = keyAnswer.length > 0 ? keyAnswer : (existing?.apiKey ?? "");
+				if (reference.length === 0) throw new Error(`a key or key reference is required for "${name}"`);
+				const apiKey = await resolveKey(reference);
+				if (apiKey === undefined) {
+					throw new Error(`"${reference}" produced no key: the command printed nothing or failed`);
+				}
 
 				const extrasAnswer = (
 					await callbacks.onPrompt({
@@ -445,7 +545,8 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 					throw new Error(`"${baseUrl}" returned no chat models for this API key, and no extra ids were given`);
 				}
 
-				const entry: GatewayEntry = { name, baseUrl, api: existing?.api ?? DEFAULT_API, apiKey, extraModels };
+				const storedKey = referenceToStore(reference, apiKey);
+				const entry: GatewayEntry = { name, baseUrl, api: existing?.api ?? DEFAULT_API, apiKey: storedKey, extraModels };
 				writeEntries(
 					[...saved.filter(candidate => candidate.name !== name), entry].sort((a, b) =>
 						a.name.localeCompare(b.name),
@@ -456,10 +557,10 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 				// next omp process discovers gateways on its own.
 				await registry?.refreshProvider(name, "online").catch(() => undefined);
 				callbacks.onProgress?.(
-					`Saved gateway "${name}" (${models.length} chat models) to ${configFile}; select them as ${name}/<id>.`,
+					`Saved gateway "${name}" (${models.length} chat models) to ${configFile}; select them as ${name}/<id>.${keyStorageNote(storedKey, reference)}`,
 				);
-				// Nothing for omp's credential store: the key lives in this plugin's own
-				// file, so the login entry leaves no second copy behind.
+				// Nothing for omp's credential store: the config file holds the key
+				// reference, and omp resolves it per request like any config value.
 				return "";
 			},
 		},
