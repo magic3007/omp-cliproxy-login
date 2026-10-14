@@ -1,0 +1,26 @@
+{
+  "name": "omp-kafara-login",
+  "version": "0.1.0",
+  "description": "omp extension: log in to a CLIProxyAPI gateway with a pasted API key and expose every model it serves",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "omp",
+    "omp-plugin",
+    "oh-my-pi",
+    "cliproxyapi",
+    "login"
+  ],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "omp": {
+    "name": "Kafara Login",
+    "description": "Adds a '/login' entry that authenticates a CLIProxyAPI gateway with a pasted API key and discovers its models.",
+    "extensions": [
+      "src/index.ts"
+    ]
+  }
+}
