@@ -102,6 +102,8 @@ omp plugin link .        # 改 src/ 即时生效
 
 卸载：`omp plugin disable omp-cliproxy-login`（停用）或 `omp plugin uninstall omp-cliproxy-login`。
 
+发版记录见 [CHANGELOG.md](CHANGELOG.md)；提 PR 前先看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ## 许可
 
 [MIT](LICENSE)

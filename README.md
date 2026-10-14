@@ -102,6 +102,8 @@ Zero dependencies: the entry point is TypeScript source (`package.json#omp.exten
 
 Remove: `omp plugin disable omp-cliproxy-login` (keep, stop loading) or `omp plugin uninstall omp-cliproxy-login`.
 
+See [CHANGELOG.md](CHANGELOG.md) for release notes and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
 ## License
 
 [MIT](LICENSE)

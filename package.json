@@ -4,17 +4,32 @@
   "description": "omp extension: log in to any CLIProxyAPI gateway with its URL + API key and expose every chat model it serves",
   "type": "module",
   "license": "MIT",
+  "author": "magic3007",
+  "homepage": "https://github.com/magic3007/omp-cliproxy-login#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magic3007/omp-cliproxy-login.git"
+  },
+  "bugs": {
+    "url": "https://github.com/magic3007/omp-cliproxy-login/issues"
+  },
   "keywords": [
     "omp",
     "omp-plugin",
     "oh-my-pi",
+    "pi-coding-agent",
     "cliproxyapi",
+    "llm-api-gateway",
+    "model-provider",
     "login"
   ],
   "files": [
     "src",
+    "assets",
     "README.md",
     "README.zh-CN.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "LICENSE"
   ],
   "omp": {
