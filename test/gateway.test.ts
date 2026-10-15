@@ -3,6 +3,7 @@ import {
 	classifyKeyReference,
 	DEFAULT_API,
 	modelsEndpoint,
+	nameModels,
 	normalizeBaseUrl,
 	normalizeGatewayName,
 	parseEntries,
@@ -206,5 +207,40 @@ describe("parseEntries", () => {
 		expect(() => parseEntries("{ not json")).toThrow();
 		expect(() => parseEntries("[]")).toThrow(/providers/);
 		expect(() => parseEntries(JSON.stringify({ providers: {} }))).toThrow(/must be an array/);
+	});
+});
+
+describe("nameModels", () => {
+	const names = (models: { id: string; displayName?: string }[]) => nameModels(models).map(model => model.name);
+
+	test("names a prefixed id by its model part when that part is unique", () => {
+		expect(names([{ id: "devin/claude-opus-5-5" }, { id: "claude-opus-5-5-high" }])).toEqual([
+			"claude-opus-5-5",
+			"claude-opus-5-5-high",
+		]);
+	});
+
+	test("names the source in parentheses when two routes share a model part", () => {
+		// kafara serves both the devin channel and a direct one under one model name.
+		expect(names([{ id: "devin/gpt-6-luna" }, { id: "gpt-6-luna" }])).toEqual(["gpt-6-luna (devin)", "gpt-6-luna"]);
+		expect(names([{ id: "a/x" }, { id: "b/x" }])).toEqual(["x (a)", "x (b)"]);
+	});
+
+	test("keeps a reported display name verbatim, and counts it against derived names", () => {
+		expect(
+			names([
+				{ id: "m1", displayName: "Router A / Model B" },
+				{ id: "openai/gpt-4o", displayName: "GPT-4o" },
+			]),
+		).toEqual(["Router A / Model B", "GPT-4o"]);
+		expect(names([{ id: "x1", displayName: "gpt-4o" }, { id: "openai/gpt-4o" }])).toEqual(["gpt-4o", "gpt-4o (openai)"]);
+	});
+
+	test("keeps an id that separates no source from a model", () => {
+		expect(names([{ id: "glm-5.3" }, { id: "/lead" }, { id: "trail/" }])).toEqual(["glm-5.3", "/lead", "trail/"]);
+	});
+
+	test("never changes the id", () => {
+		expect(nameModels([{ id: "devin/claude-opus-5-5" }])).toEqual([{ id: "devin/claude-opus-5-5", name: "claude-opus-5-5" }]);
 	});
 });

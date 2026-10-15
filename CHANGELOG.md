@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-10-15
+
+### Changed
+
+- Model names drop the upstream-source prefix of the id when the gateway reports no display name: `devin/claude-opus-5-5` shows as `claude-opus-5-5` in the status line and the selector. Two ids that share the short name stay apart — the prefixed one reads `gpt-6-luna (devin)` beside `gpt-6-luna`. Display names a gateway reports are kept verbatim, and ids (so selectors such as `kafara/devin/claude-opus-5-5`) do not change. Run `omp models refresh` after upgrading: omp caches the old names.
+
 ## [0.4.1] - 2026-10-15
 
 ### Changed
@@ -88,6 +94,7 @@ First release.
 
 - Discovery no longer reports an empty catalog while logged out. That empty success was cached as authoritative and hid the models a later login unlocked until the cache TTL expired.
 
+[0.4.2]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.4.2
 [0.4.1]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.4.1
 [0.4.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.4.0
 [0.3.0]: https://github.com/magic3007/omp-model-gateway/releases/tag/v0.3.0

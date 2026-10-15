@@ -81,6 +81,8 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 
 模型发现会剔除不可用于聊天的条目（图像/视频/语音，以及网关标记为下线或废弃的条目），并采用网关报告的上下文与输出上限，未报告时回落 200k / 64k。
 
+模型 id（也就是选择器里写的部分）与网关列出的完全一致。omp 显示的名称（状态栏、选择器）：网关报告了显示名就用显示名；否则用去掉上游来源前缀的 id（`devin/claude-opus-5-5` 显示为 `claude-opus-5-5`）。两个 id 去前缀后同名时（`devin/gpt-6-luna` 与 `gpt-6-luna`），带前缀的那个在括号里注明来源：`gpt-6-luna (devin)`。
+
 ## 管理网关
 
 所有内容在一个 JSON 文件里：`~/.omp/agent/gateways-login.json`（`0600`）：

@@ -174,14 +174,43 @@ export function parseEntries(text: string): { entries: GatewayEntry[]; problems:
 /** One chat model of a gateway catalog. */
 export interface GatewayModel {
 	id: string;
-	/** Human name; falls back to the id when the gateway reports no display name. */
-	name: string;
+	/** Display name the gateway reports, if any. */
+	displayName?: string;
 	/** Context window the gateway reports, if any. */
 	contextWindow?: number;
 	/** Output cap the gateway reports, if any. */
 	maxTokens?: number;
 	/** False when the gateway reports text-only input. */
 	acceptsImages: boolean;
+}
+
+/**
+ * Give every model of one gateway catalog a human name; ids, and so selectors,
+ * never change. A display name the gateway reports is kept as is. Otherwise
+ * the name is the id without its upstream-source prefix — `devin/claude-opus-5-5`
+ * reads `claude-opus-5-5`, as omp's own OpenRouter catalog names
+ * `anthropic/claude-opus-4.1` "Claude Opus 4.1". When that short name is not
+ * unique in the catalog (`devin/gpt-6-luna` beside `gpt-6-luna`), a prefixed
+ * id names its source in parentheses, `gpt-6-luna (devin)`, and an unprefixed
+ * id keeps itself, so the two routes stay distinguishable.
+ */
+export function nameModels<T extends Pick<GatewayModel, "id" | "displayName">>(
+	models: readonly T[],
+): (T & { name: string })[] {
+	const derived = models.map((model): { name: string; source?: string } => {
+		if (model.displayName !== undefined) return { name: model.displayName };
+		const slash = model.id.lastIndexOf("/");
+		// A leading or trailing slash separates no source from a model.
+		if (slash <= 0 || slash === model.id.length - 1) return { name: model.id };
+		return { name: model.id.slice(slash + 1), source: model.id.slice(0, slash) };
+	});
+	const uses = new Map<string, number>();
+	for (const { name } of derived) uses.set(name, (uses.get(name) ?? 0) + 1);
+	return models.map((model, index) => {
+		const { name, source } = derived[index] ?? { name: model.id };
+		const shared = (uses.get(name) ?? 0) > 1;
+		return { ...model, name: shared && source !== undefined ? `${name} (${source})` : name };
+	});
 }
 
 /** The gateway rejected the key (HTTP 401/403): a distinct type, so the login flow can explain why. */
@@ -450,7 +479,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 			const displayName = typeof row.display_name === "string" ? row.display_name.trim() : "";
 			models.push({
 				id,
-				name: displayName.length > 0 ? displayName : id,
+				...(displayName.length > 0 ? { displayName } : {}),
 				...(contextWindow !== undefined ? { contextWindow } : {}),
 				...(maxTokens !== undefined ? { maxTokens } : {}),
 				acceptsImages: !Array.isArray(inputs) || inputs.includes("image"),
@@ -462,9 +491,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 	/** Discovered models plus the entry's extra ids the catalog does not already list. */
 	const catalogFor = (discovered: GatewayModel[], extraModels: string[]): GatewayModel[] => {
 		const listed = new Set(discovered.map(model => model.id));
-		const extras = extraModels
-			.filter(id => !listed.has(id))
-			.map(id => ({ id, name: id, acceptsImages: true }));
+		const extras = extraModels.filter(id => !listed.has(id)).map(id => ({ id, acceptsImages: true }));
 		return [...discovered, ...extras];
 	};
 
@@ -506,7 +533,7 @@ export default function gatewayLogin(pi: ExtensionAPI): void {
 					baseUrl: entry.baseUrl,
 					count: models.length,
 				});
-				return models.map(model => ({
+				return nameModels(models).map(model => ({
 					id: model.id,
 					name: model.name,
 					reasoning: true,

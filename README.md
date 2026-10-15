@@ -81,6 +81,8 @@ omp -p --model litellm/claude-opus-4-1 "reply with exactly: OK"
 
 Discovery drops what is not a usable chat model (image/video/speech ids, entries the gateway marks as shut down or deprecated) and uses the context window and output cap the gateway reports, falling back to 200k / 64k.
 
+Model ids — and so selectors — are exactly what the gateway lists. The name omp shows (status line, selector) is the gateway's display name when it reports one; otherwise the id without its upstream-source prefix (`devin/claude-opus-5-5` shows as `claude-opus-5-5`). When two ids share that short name (`devin/gpt-6-luna` beside `gpt-6-luna`), the prefixed one names its source: `gpt-6-luna (devin)`.
+
 ## Managing gateways
 
 Everything lives in one JSON file, `~/.omp/agent/gateways-login.json` (`0600`):
